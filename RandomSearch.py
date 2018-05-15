@@ -260,7 +260,7 @@ if __name__ == '__main__':
         plt.plot(average_loss[:,3])
         plt.xlabel('Iterations')
         plt.ylabel('Loss')
-        plt.ylim(ymin=-2)
+        plt.ylim(ymin=-5)
         plt.title('Convergence Rates for Random Search with {} Step Sizes'.format(normalize_variance_text))
         plt.legend(['No Noise','Constant Noise', 'Quad. Inc. Noise', 'Quad. Dec. Noise'], loc='upper right')
         if mat_size == 2:
