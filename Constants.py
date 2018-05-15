@@ -1,0 +1,9 @@
+mat_size = 2 #2
+alpha = 0.01 #0.01
+iterations = 200 #200
+initialization_magnitude = 20 #20
+nu = 0.01 #0.01
+max_noise = 30 #30
+num_initializations = 30 #30
+num_gradient_calculations = 20 #20
+normalize_variance = True
