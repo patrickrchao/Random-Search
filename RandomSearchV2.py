@@ -1,7 +1,9 @@
 '''
  Patrick Chao 
- 5/12/18 
+ 5/24/18 
  ML Research with Horia Mania
+
+ Focusing on higher dimensional matrices, variance in queries, and various constant noise
  '''
 import argparse
 import sys
@@ -15,40 +17,55 @@ import random
 import math
 
 # CONSTANTS
-mat_size = Constants.mat_size 
-alpha = Constants.alpha 
-iterations = Constants.iterations
-initialization_magnitude = Constants.initialization_magnitude
-nu = Constants.nu
-max_noise = Constants.max_noise
-num_initializations = Constants.num_initializations
-num_gradient_calculations = Constants.num_gradient_calculations
+mat_size = Constants.mat_size_v2
+alpha = Constants.alpha_v2
+iterations = Constants.iterations_v2
+initialization_magnitude = Constants.initialization_magnitude_v2
+nu = Constants.nu_v2
+max_noise = Constants.max_noise_v2
+num_initializations = Constants.num_initializations_v2
+num_gradient_calculations = Constants.num_gradient_calculations_v2
+min_condition = Constants.min_condition_v2
+max_condition = Constants.max_condition_v2
 normalize_variance = False
 
 generate_surface_plots = False
+generate_sigma_plots = False
 normalize_variance_text = ""
+condition_text = ""
 noise_func_name = ""
 verbose = False
 show_plot = False
 
 no_cov = lambda x: 0
-inc_quad_cov = lambda x: x**2*max_noise/(iterations**2)
-dec_quad_cov = lambda x: (iterations-x)**2*max_noise/(iterations**2)
-constant_cov = lambda x: max_noise/3
+cov1 = lambda x: 1
+cov2 = lambda x: 2
+cov5 = lambda x: 5
+cov10 = lambda x: 10
+cov20 = lambda x: 20
+cov30 = lambda x: 30
+cov50 = lambda x: 50
+cov100 = lambda x: 100
+cov200 = lambda x: 200
+cov500 = lambda x: 500
 # Takes in dimension of matrix as input
 # Generates a random positive definite matrix with eigenvalues at least 0.1
-def generate_pd(size):
+def generate_pd(size,min_condition=None,max_condition=None):
     rand_mat = (np.random.rand(size,size)-0.5)*2#; % generate a random n x n matrix
     pd_mat = 0.5*(rand_mat@rand_mat.T)
     eigenvalues = np.linalg.eigvals(pd_mat)
-    if size ==  2:
-        if not np.all(eigenvalues > 0.5):
-            return generate_pd(size)
-
+    eigenvalues.sort()
+    if not np.all(eigenvalues > 0):
+        return generate_pd(size,min_condition,max_condition)
     else:
-        if not np.all(eigenvalues > 0.01):
-            return generate_pd(size)
-    return pd_mat
+        condition = eigenvalues[-1]/eigenvalues[0]
+        if min_condition is not None:
+            if condition < min_condition:
+                return generate_pd(size,min_condition,max_condition)
+        if max_condition is not None:
+            if condition > max_condition:
+                return generate_pd(size,min_condition,max_condition)
+    return pd_mat,eigenvalues
 
 # Given a matrix, and input vector, returns x.T A x 
 # Optional argument for adding noise, takes in the variance of noise 1d array
@@ -91,6 +108,7 @@ def optimize(mat=generate_pd(mat_size),initialization=random_initialization(init
     if verbose:
         print_details(curr_iter,x_values)
     loss = np.zeros((iterations))
+    sigma = np.zeros((iterations-1))
     loss[curr_iter] = query_function(matrix,x_values[:,curr_iter])[0][0]
 
     # Iterate over number of iterations
@@ -120,10 +138,12 @@ def optimize(mat=generate_pd(mat_size),initialization=random_initialization(init
             # Find variance of function evaluations
             function_eval_mean = np.mean(function_evals)
             function_var = np.sum(np.square(function_evals-function_eval_mean))/(2*num_gradient_calculations)
-
+        curr_sigma = np.sqrt(function_var)
+        sigma[curr_iter-1] = curr_sigma
+        
         # update current 
         update = update.T.reshape(mat_size,1)
-        x_values[:,curr_iter] = x_values[:,curr_iter-1]-update.T*alpha/(nu*np.sqrt(function_var)*num_gradient_calculations)
+        x_values[:,curr_iter] = x_values[:,curr_iter-1]-update.T*alpha/(nu*curr_sigma*num_gradient_calculations)
         if verbose:
             if curr_iter % 25 == 0 :
                 print_details(curr_iter,x_values)
@@ -132,7 +152,7 @@ def optimize(mat=generate_pd(mat_size),initialization=random_initialization(init
         print_details(curr_iter,x_values)
     if plot:
         plot_surface(matrix,x_values,loss)
-    return loss
+    return loss,sigma
     
 
 # Plots the quadratic form and the calculated path
@@ -178,27 +198,35 @@ def print_details(curr_iter,x_values):
 def parse_args():
     global mat_size,alpha,iterations,initialization_magnitude,nu,max_noise,max_noise,num_initializations
     global num_gradient_calculations,normalize_variance,normalize_variance_text, generate_surface_plots,verbose,show_plot
+    global min_condition,max_condition,condition_text,generate_sigma_plots
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mat_size", default = Constants.mat_size,action="store",
+    parser.add_argument("--mat_size", default = Constants.mat_size_v2,action="store",
                     help="matrix size",dest="mat_size",type=int)
-    parser.add_argument("--alpha", default = Constants.alpha,action="store",
+    parser.add_argument("--alpha", default = Constants.alpha_v2,action="store",
                     help="learning rate",dest="alpha",type=float)
-    parser.add_argument("--iters", default = Constants.iterations,action="store",
+    parser.add_argument("--iters", default = Constants.iterations_v2,action="store",
                     help="number of iterations",dest="iterations",type=int)
-    parser.add_argument("--init_mag", default =Constants.initialization_magnitude,action="store",
+    parser.add_argument("--init_mag", default =Constants.initialization_magnitude_v2,action="store",
                     help="initialization magnitude",dest="initialization_magnitude",type=int)
-    parser.add_argument("--nu", default = Constants.nu,action="store",
+    parser.add_argument("--nu", default = Constants.nu_v2,action="store",
                     help="standard deviation for query",dest="nu",type=float)
-    parser.add_argument("--max_noise", default = Constants.max_noise,action="store",
+    parser.add_argument("--max_noise", default = Constants.max_noise_v2,action="store",
                     help="maximum noise from oracle",dest="max_noise",type=int)
-    parser.add_argument("--num_init", default = Constants.num_initializations,action="store",
+    parser.add_argument("--num_init", default = Constants.num_initializations_v2,action="store",
                     help="number initializations to process",dest="num_initializations",type=int)
-    parser.add_argument("--num_samples", default = Constants.num_gradient_calculations,action="store",
+    parser.add_argument("--num_samples", default = Constants.num_gradient_calculations_v2,action="store",
                     help="number of directions to sample to calculate approximate gradient",dest="num_gradient_calculations",type=int)
-    parser.add_argument("--no-normalize", default = Constants.normalize_variance,action="store_false",
+    parser.add_argument("--no-normalize", default = Constants.normalize_variance_v2,action="store_false",
                     help="boolean to normalize step size",dest="normalize_variance")
+    parser.add_argument("--min_condition", default = Constants.min_condition_v2,action="store",
+                    help="minimum condition number for matrix",dest="min_condition",type=int)
+    parser.add_argument("--max_condition", default = Constants.max_condition_v2,action="store",
+                    help="maximum condition number for matrix",dest="max_condition",type=int)
     parser.add_argument("--surface_plots", default = False, action="store_true",
                     help="boolean to generate surface plots rather than loss curves",dest="surface_plots")
+    parser.add_argument("--sigma_plots", default = False, action="store_true",
+                    help="boolean to generate sigma plots rather than loss curves",dest="sigma_plots")
     parser.add_argument("--verbose", default = False, action="store_true",
                     help="print out the (x,y) location and value",dest="verbose")
     parser.add_argument("--show_plot", default = False, action="store_true",
@@ -215,17 +243,33 @@ def parse_args():
     num_gradient_calculations = args.num_gradient_calculations
     normalize_variance = args.normalize_variance
     generate_surface_plots = args.surface_plots
+    generate_sigma_plots = args.sigma_plots
     verbose = args.verbose
     show_plot = args.show_plot
+    min_condition = args.min_condition
+    max_condition = args.max_condition
+
     if normalize_variance:
         normalize_variance_text = "Normalized"
     else:
         normalize_variance_text = "Non-Normalized"
+    if min_condition == None:
+        if max_condition == None:
+            condition_text = "Unconditioned Matrix"
+        else:
+            condition_text = "Condition Number <" + str(max_condition)
+    else:
+        if max_condition == None:
+            condition_text = "Condition Number >" + str(min_condition)
+        else:
+            condition_text = "Condition Number {}-{}".format(min_condition,max_condition)
+    print("Matrix Size: {} Alpha: {} Nu: {} {}".format(mat_size,alpha,nu,condition_text))
 
 if __name__ == '__main__':
     parse_args()
     if generate_surface_plots:
-        matrix = generate_pd(mat_size)
+        matrix,eigenvalues = generate_pd(mat_size)
+        #print(eigenvalues)
         initialization = random_initialization(initialization_magnitude,quad=2)
 
         noise_func_name = "No Noise"
@@ -238,40 +282,103 @@ if __name__ == '__main__':
         optimize(matrix, initialization, cov_func = dec_quad_cov,normalize_variance=normalize_variance,verbose=verbose,plot=True)
 
     else:
-        loss = np.zeros((iterations,num_initializations,4))
+        
+        loss = np.zeros((iterations,num_initializations,8))
+        sigmas = np.zeros((iterations-1,num_initializations,8))
+       # print_intialization()
         for trial in range(num_initializations):
             print("Initialization %d of %d"%(trial+1,num_initializations))
-            matrix = generate_pd(mat_size)
+            matrix,eigenvalues = generate_pd(mat_size,min_condition=min_condition,max_condition=max_condition)
             initialization = random_initialization(initialization_magnitude)
             #print(initialization,np.linalg.norm(initialization))
-            loss0 = optimize(matrix, initialization, cov_func = no_cov,normalize_variance=normalize_variance,verbose=verbose)
-            loss1 = optimize(matrix, initialization, cov_func = constant_cov,normalize_variance=normalize_variance,verbose=verbose)
-            loss2 = optimize(matrix, initialization, cov_func = inc_quad_cov,normalize_variance=normalize_variance,verbose=verbose)
-            loss3 = optimize(matrix, initialization, cov_func = dec_quad_cov,normalize_variance=normalize_variance,verbose=verbose)
+            loss0,sigma0 = optimize(matrix, initialization, cov_func = no_cov,normalize_variance=normalize_variance,verbose=verbose)
+            loss1,sigma1 = optimize(matrix, initialization, cov_func = cov1,normalize_variance=normalize_variance,verbose=verbose)
+            loss2,sigma2 = optimize(matrix, initialization, cov_func = cov5,normalize_variance=normalize_variance,verbose=verbose)
+            loss3,sigma3 = optimize(matrix, initialization, cov_func = cov10, normalize_variance=normalize_variance,verbose=verbose)
+            loss4,sigma4 = optimize(matrix, initialization, cov_func = cov50,normalize_variance=normalize_variance,verbose=verbose)
+            loss5,sigma5 = optimize(matrix, initialization, cov_func = cov100,normalize_variance=normalize_variance,verbose=verbose)
+            loss6,sigma6 = optimize(matrix, initialization, cov_func = cov200,normalize_variance=normalize_variance,verbose=verbose)
+            loss7,sigma7 = optimize(matrix, initialization, cov_func = cov500,normalize_variance=normalize_variance,verbose=verbose)
+
+            if generate_sigma_plots:
+                sigmas[:,trial,0] = sigma0
+                sigmas[:,trial,1] = sigma1
+                sigmas[:,trial,2] = sigma2
+                sigmas[:,trial,3] = sigma3
+                sigmas[:,trial,4] = sigma4
+                sigmas[:,trial,5] = sigma5
+                sigmas[:,trial,6] = sigma6
+                sigmas[:,trial,7] = sigma7
+            
             loss[:,trial,0] = loss0
             loss[:,trial,1] = loss1
             loss[:,trial,2] = loss2
             loss[:,trial,3] = loss3
+            loss[:,trial,4] = loss4
+            loss[:,trial,5] = loss5
+            loss[:,trial,6] = loss6
+            loss[:,trial,7] = loss7
 
-        average_loss = np.mean(loss,axis=1)
 
-        plt.plot(average_loss[:,0])
-        plt.plot(average_loss[:,1])
-        plt.plot(average_loss[:,2])
-        plt.plot(average_loss[:,3])
-        plt.xlabel('Iterations')
-        plt.ylabel('Loss')
-        plt.ylim(ymin=-5)
-        plt.title('Convergence Rates for Random Search with {} Step Sizes'.format(normalize_variance_text))
-        plt.legend(['No Noise','Constant Noise', 'Quad. Inc. Noise', 'Quad. Dec. Noise'], loc='upper right')
-        if mat_size == 2:
-            plt.savefig("./Loss_Curves/{} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
-                format(normalize_variance_text,alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=200)
-        else:
-            plt.savefig("./Loss_Curves/{} matrix size {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
-                format(normalize_variance_text,mat_size,alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=200)
-        if show_plot:
-            plt.show()
+        average_sigma = np.mean(sigmas,axis=1)
+        plt.plot(average_sigma[:,0])
+        plt.plot(average_sigma[:,1])
+        plt.plot(average_sigma[:,2])
+        plt.plot(average_sigma[:,3])
+        plt.plot(average_sigma[:,4])
+        plt.plot(average_sigma[:,5])
+        plt.plot(average_sigma[:,6])
+        plt.plot(average_sigma[:,7])
+
+        if generate_sigma_plots:
+            plt.xlabel('Iterations')
+            plt.ylabel('Sigma per Iteration')
+            plt.ylim(ymin=-1)
+            plt.ylim(ymax=30)
+            # elif mat_size<=10:
+            #     plt.ylim(ymax=1000)
+            plt.title('Sigma with {} Step Sizes and {}'.format(normalize_variance_text,condition_text))
+            plt.legend(['No Noise','Var. 1', 'Var. 5', 'Var. 10','Var. 50','Var. 100','Var. 200','Var. 500'], loc='upper right',prop={'size': 6})
+            if mat_size == 2:
+                plt.savefig("./Sigma_Curves/V2_Images/{} {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
+                    format(normalize_variance_text,condition_text.lower(), alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+            else:
+                plt.savefig("./Sigma_Curves/V2_Images/{} matrix size {} {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
+                    format(normalize_variance_text,mat_size,condition_text.lower(),alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+            if show_plot:
+                plt.show()
+
+
+        plt.clf()
+        # average_loss = np.mean(loss,axis=1)
+        # plt.plot(average_loss[:,0])
+        # plt.plot(average_loss[:,1])
+        # plt.plot(average_loss[:,2])
+        # plt.plot(average_loss[:,3])
+        # plt.plot(average_loss[:,4])
+        # plt.plot(average_loss[:,5])
+        # plt.plot(average_loss[:,6])
+        # plt.plot(average_loss[:,7])
+
+        
+        
+        # plt.xlabel('Iterations')
+        # plt.ylabel('Loss')
+        # plt.ylim(ymin=-5)
+        # if mat_size<=5:
+        #     plt.ylim(ymax=550)
+        # elif mat_size<=10:
+        #     plt.ylim(ymax=1000)
+        # plt.title('Convergence with {} Step Sizes and {}'.format(normalize_variance_text,condition_text))
+        # plt.legend(['No Noise','Var. 1', 'Var. 5', 'Var. 10','Var. 50','Var. 100','Var. 200','Var. 500'], loc='upper right',prop={'size': 6})
+        # if mat_size == 2:
+        #     plt.savefig("./Loss_Curves/V2_Images/{} {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
+        #         format(normalize_variance_text,condition_text.lower(), alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+        # else:
+        #     plt.savefig("./Loss_Curves/V2_Images/{} matrix size {} {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
+        #         format(normalize_variance_text,mat_size,condition_text.lower(),alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+        # if show_plot:
+        #     plt.show()
     
 
 
