@@ -25,12 +25,11 @@ nu = Constants.nu_v2
 max_noise = Constants.max_noise_v2
 num_initializations = Constants.num_initializations_v2
 num_gradient_calculations = Constants.num_gradient_calculations_v2
-min_condition = Constants.min_condition_v2
-max_condition = Constants.max_condition_v2
+condition = Constants.condition_v2
 normalize_variance = False
 
 generate_surface_plots = False
-generate_sigma_plots = False
+generate_sigma_plots = True
 normalize_variance_text = ""
 condition_text = ""
 noise_func_name = ""
@@ -51,8 +50,8 @@ cov500 = lambda x: 500
 # Takes in dimension of matrix as input
 # Generates a random positive definite matrix with eigenvalues at least 0.1
 def generate_pd(size,min_condition=None,max_condition=None):
-    rand_mat = (np.random.rand(size,size)-0.5)*2#; % generate a random n x n matrix
-    pd_mat = 0.5*(rand_mat@rand_mat.T)
+    rand_mat = (np.random.rand(size,size)-0.5)*10#; % generate a random n x n matrix
+    pd_mat = (rand_mat@rand_mat.T)
     eigenvalues = np.linalg.eigvals(pd_mat)
     eigenvalues.sort()
     if not np.all(eigenvalues > 0):
@@ -65,6 +64,41 @@ def generate_pd(size,min_condition=None,max_condition=None):
         if max_condition is not None:
             if condition > max_condition:
                 return generate_pd(size,min_condition,max_condition)
+    return pd_mat,eigenvalues
+
+def generate_orthonormal(size):  
+    random_state = np.random
+    H = np.eye(size)
+    D = np.ones((size,))
+    for n in range(1, size):
+        x = random_state.normal(size=(size-n+1,))
+        D[n-1] = np.sign(x[0])
+        x[0] -= D[n-1]*np.sqrt((x*x).sum())
+        # Householder transformation
+        Hx = (np.eye(size-n+1) - 2.*np.outer(x, x)/(x*x).sum())
+        mat = np.eye(size)
+        mat[n-1:, n-1:] = Hx
+        H = np.dot(H, mat)
+    # Fix the last sign such that the determinant is 1
+    D[-1] = (-1)**(1-(size % 2))*D.prod()
+    # Equivalent to np.dot(np.diag(D), H) but faster, apparently
+    H = (D*H.T).T
+    return H
+
+# Takes in dimension of matrix as input
+def generate_pd_cond(size,condition_num=None):
+
+    if condition_num == None:
+        condition_num = 1/np.random.random()
+    min_eig = 1
+    max_eig = condition_num
+    eigs = np.random.random_sample(size-2)*(max_eig-min_eig)+1
+    eigs = np.append(eigs,min_eig)
+    eigs = np.append(eigs,max_eig)
+    orthonormal= generate_orthonormal(size)
+    pd_mat = orthonormal.T@np.diag(eigs)@orthonormal
+    eigenvalues = np.linalg.eigvals(pd_mat)
+    eigenvalues.sort()
     return pd_mat,eigenvalues
 
 # Given a matrix, and input vector, returns x.T A x 
@@ -198,7 +232,7 @@ def print_details(curr_iter,x_values):
 def parse_args():
     global mat_size,alpha,iterations,initialization_magnitude,nu,max_noise,max_noise,num_initializations
     global num_gradient_calculations,normalize_variance,normalize_variance_text, generate_surface_plots,verbose,show_plot
-    global min_condition,max_condition,condition_text,generate_sigma_plots
+    global condition,condition_text,generate_sigma_plots
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--mat_size", default = Constants.mat_size_v2,action="store",
@@ -219,10 +253,8 @@ def parse_args():
                     help="number of directions to sample to calculate approximate gradient",dest="num_gradient_calculations",type=int)
     parser.add_argument("--no-normalize", default = Constants.normalize_variance_v2,action="store_false",
                     help="boolean to normalize step size",dest="normalize_variance")
-    parser.add_argument("--min_condition", default = Constants.min_condition_v2,action="store",
-                    help="minimum condition number for matrix",dest="min_condition",type=int)
-    parser.add_argument("--max_condition", default = Constants.max_condition_v2,action="store",
-                    help="maximum condition number for matrix",dest="max_condition",type=int)
+    parser.add_argument("--condition", default = Constants.condition_v2,action="store",
+                    help="condition number for matrix",dest="condition",type=int)
     parser.add_argument("--surface_plots", default = False, action="store_true",
                     help="boolean to generate surface plots rather than loss curves",dest="surface_plots")
     parser.add_argument("--sigma_plots", default = False, action="store_true",
@@ -246,23 +278,18 @@ def parse_args():
     generate_sigma_plots = args.sigma_plots
     verbose = args.verbose
     show_plot = args.show_plot
-    min_condition = args.min_condition
-    max_condition = args.max_condition
+    condition = args.condition
 
     if normalize_variance:
         normalize_variance_text = "Normalized"
     else:
         normalize_variance_text = "Non-Normalized"
-    if min_condition == None:
-        if max_condition == None:
-            condition_text = "Unconditioned Matrix"
-        else:
-            condition_text = "Condition Number <" + str(max_condition)
+    if condition == None:
+       
+        condition_text = "Unconditioned Matrix"
     else:
-        if max_condition == None:
-            condition_text = "Condition Number >" + str(min_condition)
-        else:
-            condition_text = "Condition Number {}-{}".format(min_condition,max_condition)
+        condition_text = "Condition Number " + str(condition)
+
     print("Matrix Size: {} Alpha: {} Nu: {} {}".format(mat_size,alpha,nu,condition_text))
 
 if __name__ == '__main__':
@@ -288,7 +315,10 @@ if __name__ == '__main__':
        # print_intialization()
         for trial in range(num_initializations):
             print("Initialization %d of %d"%(trial+1,num_initializations))
-            matrix,eigenvalues = generate_pd(mat_size,min_condition=min_condition,max_condition=max_condition)
+            #matrix,eigenvalues = generate_pd(mat_size,min_condition=min_condition,max_condition=max_condition)
+            matrix,eigenvalues = generate_pd_cond(mat_size,condition_num=condition)
+            print(eigenvalues)
+            print(eigenvalues[-1]/eigenvalues[0])
             initialization = random_initialization(initialization_magnitude)
             #print(initialization,np.linalg.norm(initialization))
             loss0,sigma0 = optimize(matrix, initialization, cov_func = no_cov,normalize_variance=normalize_variance,verbose=verbose)
@@ -338,7 +368,7 @@ if __name__ == '__main__':
             # elif mat_size<=10:
             #     plt.ylim(ymax=1000)
             plt.title('Sigma with {} Step Sizes and {}'.format(normalize_variance_text,condition_text))
-            plt.legend(['No Noise','Var. 1', 'Var. 5', 'Var. 10','Var. 50','Var. 100','Var. 200','Var. 500'], loc='upper right',prop={'size': 6})
+            plt.legend(['No Noise','Var. 1', 'Var. 5', 'Var. 10','Var. 50','Var. 100','Var. 200','Var. 500'], loc='upper right',prop={'size': 7})
             if mat_size == 2:
                 plt.savefig("./Sigma_Curves/V2_Images/{} {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
                     format(normalize_variance_text,condition_text.lower(), alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
