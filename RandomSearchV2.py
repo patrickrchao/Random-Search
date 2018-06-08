@@ -66,6 +66,7 @@ def generate_pd(size,min_condition=None,max_condition=None):
                 return generate_pd(size,min_condition,max_condition)
     return pd_mat,eigenvalues
 
+#https://stackoverflow.com/questions/38426349/how-to-create-random-orthonormal-matrix-in-python-numpy
 def generate_orthonormal(size):  
     random_state = np.random
     H = np.eye(size)
@@ -380,35 +381,36 @@ if __name__ == '__main__':
 
 
         plt.clf()
-        # average_loss = np.mean(loss,axis=1)
-        # plt.plot(average_loss[:,0])
-        # plt.plot(average_loss[:,1])
-        # plt.plot(average_loss[:,2])
-        # plt.plot(average_loss[:,3])
-        # plt.plot(average_loss[:,4])
-        # plt.plot(average_loss[:,5])
-        # plt.plot(average_loss[:,6])
-        # plt.plot(average_loss[:,7])
+        average_loss = np.mean(loss,axis=1)
+        plt.plot(average_loss[:,0])
+        plt.plot(average_loss[:,1])
+        plt.plot(average_loss[:,2])
+        plt.plot(average_loss[:,3])
+        plt.plot(average_loss[:,4])
+        plt.plot(average_loss[:,5])
+        plt.plot(average_loss[:,6])
+        plt.plot(average_loss[:,7])
 
         
         
-        # plt.xlabel('Iterations')
-        # plt.ylabel('Loss')
-        # plt.ylim(ymin=-5)
+        plt.xlabel('Iterations')
+        plt.ylabel('Loss')
+        plt.ylim(ymin=-5)
+        plt.ylim(ymax=5000)
         # if mat_size<=5:
-        #     plt.ylim(ymax=550)
-        # elif mat_size<=10:
         #     plt.ylim(ymax=1000)
-        # plt.title('Convergence with {} Step Sizes and {}'.format(normalize_variance_text,condition_text))
-        # plt.legend(['No Noise','Var. 1', 'Var. 5', 'Var. 10','Var. 50','Var. 100','Var. 200','Var. 500'], loc='upper right',prop={'size': 6})
-        # if mat_size == 2:
-        #     plt.savefig("./Loss_Curves/V2_Images/{} {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
-        #         format(normalize_variance_text,condition_text.lower(), alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
-        # else:
-        #     plt.savefig("./Loss_Curves/V2_Images/{} matrix size {} {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
-        #         format(normalize_variance_text,mat_size,condition_text.lower(),alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
-        # if show_plot:
-        #     plt.show()
+        # elif mat_size<=10:
+        #     plt.ylim(ymax=2500)
+        plt.title('Convergence with {} Step Sizes and {}'.format(normalize_variance_text,condition_text))
+        plt.legend(['No Noise','Var. 1', 'Var. 5', 'Var. 10','Var. 50','Var. 100','Var. 200','Var. 500'], loc='upper right',prop={'size': 6})
+        if mat_size == 2:
+            plt.savefig("./Loss_Curves/V2_Images/{} {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
+                format(normalize_variance_text,condition_text.lower(), alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+        else:
+            plt.savefig("./Loss_Curves/V2_Images/{} matrix size {} {} alpha {} iters {} mag {} nu {} maxnoise {} initializations {} calcs {}.png".
+                format(normalize_variance_text,mat_size,condition_text.lower(),alpha,iterations,initialization_magnitude,nu,max_noise,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+        if show_plot:
+            plt.show()
     
 
 
