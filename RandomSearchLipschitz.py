@@ -37,17 +37,19 @@ show_plot = False
 function = 0
 param = 0
 step_size_text = ""
+function_text = ""
 initial_step_magnitude = 0.2
 
 quadratic_t = 5
 
 # 1: Inverse Square Root, 2: log, 3: Geometric in step and iterations
-def step_size(iteration, step_size_function):
-    if step_size_function == 1:
+def step_size(iteration):
+
+    if step_size_type == 1:
         return 1/np.sqrt(iteration+1)*initial_step_magnitude
-    elif step_size_function == 2:
+    elif step_size_type == 2:
         return np.log(iteration+1)*initial_step_magnitude
-    else:
+    elif step_size_type == 3:
         curr_step = initial_step_magnitude
         amount_to_halve = 2
         counter = 0
@@ -65,19 +67,22 @@ def step_size(iteration, step_size_function):
 # Function Query 
 # if function_num == 1, use a piecewise quadratic 
 def query_function(function_num,x):
+    norm = np.linalg.norm(x)
     # Quadratic
     if function_num  == 1:
-        norm = np.linalg.norm(x)**2
-        #print(param,norm,quadratic_t)
         #Parameter should be on the order of 0.1 to 10
-        if norm <= quadratic_t**2:
-            return norm 
+        if norm <= quadratic_t:
+            return norm**2
         else:
-            return param*norm +(-param+1)*quadratic_t**2
+            return param*(norm**2) +(-param+1)*(quadratic_t**2)
     elif function_num == 2:
         #Parameter should be on the order of 0.01 to 0.5
-        left_log = np.log(x+param)
-        right_log = np.log((-1.0)*x+param)
+
+        if norm+param<0:
+            return np.log((-1.0)*norm+param)
+        elif (-1.0)*norm+param < 0:
+            return np.log(norm+param)
+        return max(np.log(norm+param),np.log((-1.0)*norm+param))
     return 0
 
 # Randomly initializes the starting point of the optimization
@@ -142,7 +147,7 @@ def optimize(function,initialization=random_initialization(initialization_magnit
         
         # update current 
         update = update.T.reshape(num_dimensions,1)
-        alpha = step_size(curr_iter,step_size_type)
+        alpha = step_size(curr_iter)
         x_values[:,curr_iter] = x_values[:,curr_iter-1]-update.T*alpha/(nu*curr_sigma*num_gradient_calculations)
         if verbose:
             if curr_iter % 25 == 0 :
@@ -180,8 +185,9 @@ def plot_surface(function,x_values,loss,normalize_variance):
     plt.xlabel('X')
     plt.ylabel('Y')
     plt.title('{} Convergence Path with {} Steps'.format(normalize_variance_text,step_size_text))
-    plt.savefig("./Surface_Plots/Lipschitz/{} {} Step Sizes Dimensions {}  iters {} mag {} nu {} initializations {} calcs {}.png".
-                    format(normalize_variance_text, step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+    plt.savefig("./Surface_Plots/Lipschitz/{} Function {} {} Step Sizes Dimensions {}  iters {} mag {} nu {}  calcs {}.png".
+                    format(function_text,normalize_variance_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+        
     if show_plot:
         plt.show()
         plt.close()
@@ -197,7 +203,7 @@ def print_details(function,curr_iter,x_values):
 def parse_args():
     global iterations,initialization_magnitude,nu,num_initializations,step_size_text
     global num_gradient_calculations,generate_surface_plots,verbose,show_plot
-    global generate_sigma_plots,function, param
+    global generate_sigma_plots,function, param, function_text, step_size_type
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--iters", default = LipschitzConstants.iterations,action="store",
@@ -220,7 +226,7 @@ def parse_args():
                     help="show the plot after generation",dest="show_plot")
     parser.add_argument("--function_type", default = 1, action="store",
                     help="1: Quadratic, 2: Log",dest="function_type",type=int)
-    parser.add_argument("--step_function", default = 1, action="store",
+    parser.add_argument("--step_function", default = 0, action="store",
                     help="1: Inverse Square Root, 2: log, 3: Geometric in step and iterations",dest="step_size_type",type=int)
     parser.add_argument("--num_dimensions", default = 2,action="store",
                     help="Number of dimensions",dest="num_dimensions",type=int)
@@ -241,13 +247,18 @@ def parse_args():
     step_size_type = args.step_size_type
     num_dimensions = args.num_dimensions
     param = args.param
+    if function == 1:
+        function_text = "Quadratic"
+    elif function == 2:
+        function_text = "Log"
 
-    if step_size_type == 0:
+    if step_size_type == 1:
         step_size_text = "Inverse Square Root"
-    elif step_size_type == 1:
+    elif step_size_type == 2:
         step_size_text = "Log"
-    else:
-        step_size_text = "Geometric to Number of Steps and Iterations"
+    elif step_size_type == 3:
+        step_size_text = "Geometric"
+
     if param == 0:
         if function == 1:
             param = 0.1
@@ -291,8 +302,8 @@ if __name__ == '__main__':
             plt.title('Sigma with {} Step Sizes'.format(step_size_text))
             plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
 
-            plt.savefig("./Sigma_Curves/Lipschitz/{} Step Sizes Dimensions {}  iters {} mag {} nu {} initializations {} calcs {}.png".
-                    format(step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+            plt.savefig("./Sigma_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {}  iters {} mag {} nu {} initializations {} calcs {}.png".
+                    format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
             if show_plot:
                 plt.show()
 
@@ -312,8 +323,8 @@ if __name__ == '__main__':
         #     plt.ylim(ymax=2500)
         plt.title('Convergence with {} Step Sizes'.format(step_size_text))
         plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
-        plt.savefig("./Loss_Curves/Lipschitz/{} Step Sizes Dimensions {}  iters {} mag {} nu {} initializations {} calcs {}.png".
-                    format(step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+        plt.savefig("./Loss_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {}  iters {} mag {} nu {} initializations {} calcs {}.png".
+                    format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
         if show_plot:
             plt.show()
     
