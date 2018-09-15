@@ -96,8 +96,11 @@ def generate_pd_cond(size,condition_num=None):
     eigs = np.random.random_sample(size-2)*(max_eig-min_eig)+1
     eigs = np.append(eigs,min_eig)
     eigs = np.append(eigs,max_eig)
-    orthonormal= generate_orthonormal(size)
-    pd_mat = orthonormal.T@np.diag(eigs)@orthonormal
+    eigs_diag = np.diag(eigs)
+    pd_mat = eigs_diag 
+    eigenvalues = eigs 
+    # orthonormal= generate_orthonormal(size)
+    # pd_mat = orthonormal.T@eigs_diag@orthonormal
     eigenvalues = np.linalg.eigvals(pd_mat)
     eigenvalues.sort()
     return pd_mat,eigenvalues
@@ -153,7 +156,7 @@ def optimize(mat=generate_pd(mat_size),initialization=random_initialization(init
         function_evals = np.zeros((num_gradient_calculations,2))
         for i in range(num_gradient_calculations):
             # delta is the random perturbation to x_{j} to calculate approximate gradient
-            delta = np.random.rand(mat_size,)
+            delta = np.random.normal(size=mat_size)
             # calculate the queried values x_{j} +/- nu*delta
             pos_delta_x = x_values[:,(curr_iter-1)]+nu*delta
             neg_delta_x = x_values[:,curr_iter-1]-nu*delta
@@ -172,7 +175,7 @@ def optimize(mat=generate_pd(mat_size),initialization=random_initialization(init
         if normalize_variance:
             # Find variance of function evaluations
             function_eval_mean = np.mean(function_evals)
-            function_var = np.sum(np.square(function_evals-function_eval_mean))/(2*num_gradient_calculations)
+            function_var = np.var(function_evals)
         curr_sigma = np.sqrt(function_var)
         sigma[curr_iter-1] = curr_sigma
         
@@ -320,6 +323,7 @@ if __name__ == '__main__':
             matrix,eigenvalues = generate_pd_cond(mat_size,condition_num=condition)
             print(eigenvalues)
             print(eigenvalues[-1]/eigenvalues[0])
+            print(np.trace(matrix@matrix))
             initialization = random_initialization(initialization_magnitude)
             #print(initialization,np.linalg.norm(initialization))
             loss0,sigma0 = optimize(matrix, initialization, cov_func = no_cov,normalize_variance=normalize_variance,verbose=verbose)
