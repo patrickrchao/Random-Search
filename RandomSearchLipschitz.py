@@ -48,7 +48,7 @@ def step_size(iteration):
     if step_size_type == 1:
         return 1/np.sqrt(iteration+1)*initial_step_magnitude
     elif step_size_type == 2:
-        return np.log(iteration+1)*initial_step_magnitude
+        return 1/np.log(iteration+1)*initial_step_magnitude
     elif step_size_type == 3:
         curr_step = initial_step_magnitude
         amount_to_halve = 2
@@ -113,8 +113,10 @@ def optimize(function,initialization=random_initialization(initialization_magnit
         print_details(curr_iter,x_values)
 
     loss = np.zeros((iterations))
+    dist_from_origin = np.zeros((iterations))
     sigma = np.zeros((iterations-1))
     loss[curr_iter] = query_function(function,x_values[:,curr_iter])
+    dist_from_origin[curr_iter] = np.linalg.norm(x_values[:,curr_iter])
 
     # Iterate over number of iterations
     for curr_iter in range(1,iterations):
@@ -135,15 +137,11 @@ def optimize(function,initialization=random_initialization(initialization_magnit
             curr_update = (function_evals[i,0]-function_evals[i,1])*delta
             update = update + curr_update
 
-        function_var = 1
-
-        if normalize_variance:
-            # Find variance of function evaluations
-            #function_eval_mean = np.mean(function_evals)
-            function_var = np.var(function_evals)
-
+        function_var = np.var(function_evals)
         curr_sigma = np.sqrt(function_var)
         sigma[curr_iter-1] = curr_sigma
+        if not normalize_variance:
+            curr_sigma = 1
         
         # update current 
         update = update.T.reshape(num_dimensions,1)
@@ -153,11 +151,12 @@ def optimize(function,initialization=random_initialization(initialization_magnit
             if curr_iter % 25 == 0 :
                 print_details(curr_iter,x_values)
         loss[curr_iter] = query_function(function,x_values[:,curr_iter])
+        dist_from_origin[curr_iter] = np.linalg.norm(x_values[:,curr_iter])
     if verbose:
         print_details(function,curr_iter,x_values)
     if plot:
         plot_surface(function,x_values,loss,normalize_variance)
-    return loss,sigma
+    return loss,sigma,dist_from_origin
     
 
 # Plots the quadratic form and the calculated path
@@ -184,9 +183,9 @@ def plot_surface(function,x_values,loss,normalize_variance):
         normalize_variance_text = "Non-Normalized"
     plt.xlabel('X')
     plt.ylabel('Y')
-    plt.title('{} Convergence Path with {} Steps'.format(normalize_variance_text,step_size_text))
-    plt.savefig("./Surface_Plots/Lipschitz/{} Function {} {} Step Sizes Dimensions {}  iters {} mag {} nu {}  calcs {}.png".
-                    format(function_text,normalize_variance_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+    plt.title('{} Function {} Convergence Path with {} Steps Parameter {}'.format(function_text,normalize_variance_text,step_size_text,param))
+    plt.savefig("./Surface_Plots/Lipschitz/{} Function {} {} Step Sizes Dimensions {} iters {} mag {} nu {} calcs {} param {}.png".
+                    format(function_text,normalize_variance_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
         
     if show_plot:
         plt.show()
@@ -276,13 +275,15 @@ if __name__ == '__main__':
         
         loss = np.zeros((iterations,num_initializations,2))
         sigmas = np.zeros((iterations-1,num_initializations,2))
-       # print_intialization()
+        dist_from_origin = np.zeros((iterations,num_initializations,2))
+
         for trial in range(num_initializations):
-            print("Initialization %d of %d"%(trial+1,num_initializations))
+            if trial % 100 == 99:
+                print("Initialization %d of %d"%(trial+1,num_initializations))
             
             initialization = random_initialization(initialization_magnitude)
-            loss_norm,sigma_norm = optimize(function, initialization, normalize_variance=True,verbose=verbose)
-            loss_non_norm,sigma_non_norm = optimize(function, initialization, normalize_variance=False,verbose=verbose)
+            loss_norm,sigma_norm,dist_from_origin_norm = optimize(function, initialization, normalize_variance=True,verbose=verbose)
+            loss_non_norm,sigma_non_norm,dist_from_origin_non_norm = optimize(function, initialization, normalize_variance=False,verbose=verbose)
             if generate_sigma_plots:
                 sigmas[:,trial,0] = sigma_norm
                 sigmas[:,trial,1] = sigma_non_norm
@@ -290,7 +291,8 @@ if __name__ == '__main__':
             loss[:,trial,0] = loss_norm
             loss[:,trial,1] = loss_non_norm
 
-
+            dist_from_origin[:,trial,0] = dist_from_origin_norm
+            dist_from_origin[:,trial,1] = dist_from_origin_non_norm
 
         if generate_sigma_plots:
             average_sigma = np.mean(sigmas,axis=1)
@@ -299,11 +301,11 @@ if __name__ == '__main__':
             plt.xlabel('Iterations')
             plt.ylabel('Sigma per Iteration')
             plt.ylim(ymin=0)
-            plt.title('Sigma with {} Step Sizes'.format(step_size_text))
+            plt.title('{} Function Sigma with {} Step Sizes Parameter {}'.format(function_text,step_size_text,param))
             plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
 
-            plt.savefig("./Sigma_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {}  iters {} mag {} nu {} initializations {} calcs {}.png".
-                    format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+            plt.savefig("./Sigma_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {}  iters {} mag {} nu {} initializations {} calcs {} param {}.png".
+                    format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
             if show_plot:
                 plt.show()
 
@@ -315,16 +317,23 @@ if __name__ == '__main__':
         
         plt.xlabel('Iterations')
         plt.ylabel('Loss')
-        plt.ylim(ymin=-0.1)
-        #plt.ylim(ymax=5000)
-        # if mat_size<=5:
-        #     plt.ylim(ymax=1000)
-        # elif mat_size<=10:
-        #     plt.ylim(ymax=2500)
-        plt.title('Convergence with {} Step Sizes'.format(step_size_text))
+        plt.title('{} Function Convergence with {} Step Sizes Parameter {}'.format(function_text,step_size_text,param))
         plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
-        plt.savefig("./Loss_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {}  iters {} mag {} nu {} initializations {} calcs {}.png".
-                    format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations) , bbox_inches='tight',dpi=400)
+        plt.savefig("./Loss_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {}.png".
+                    format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
+
+        plt.clf()
+        average_dist_from_origin = np.mean(dist_from_origin,axis=1)
+        plt.plot(average_dist_from_origin[:,0])
+        plt.plot(average_dist_from_origin[:,1])
+        
+        plt.xlabel('Iterations')
+        plt.ylabel('Distance from Origin')
+        plt.ylim(ymin=0)
+        plt.title('{} Function Convergence with {} Step Sizes Parameter {}'.format(function_text,step_size_text,param))
+        plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
+        plt.savefig("./Distance_From_Origin_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {}.png".
+                    format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
         if show_plot:
             plt.show()
     
