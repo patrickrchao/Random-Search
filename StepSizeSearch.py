@@ -17,6 +17,8 @@ import OptimalInitialStepMagnitudes
 import random
 import math
 
+
+
 # CONSTANTS
 
 iterations = LipschitzConstants.iterations
@@ -39,21 +41,33 @@ function = 0
 param = 0
 step_size_text = ""
 function_text = ""
-initial_step_magnitude = 0.8
+
+start_step = 0.001
+end_step = 3
 
 quadratic_t = 5
-optimal_step_dict = OptimalInitialStepMagnitudes.step_mag
-optimal = False
+
+# Function Derivative
+def derivative(function_num,x):
+
+    # Quadratic
+    if function_num  == 1:
+        #Parameter should be on the order of 0.1 to 10
+        if x <= quadratic_t:
+            return 2*x
+        else:
+            return 2*param*x
+    elif function_num == 2:
+        #Parameter should be on the order of 0.01 to 0.5
+
+        if x <0:
+            return 1/(param + x)
+        elif x>=0:
+            return -1/(param-x)
+    return 0
 
 # 1: Inverse Square Root, 2: log, 3: Geometric in step and iterations, 4: Constant
-def step_size(iteration,normalize_variance):
-    global initial_step_magnitude
-    if optimal:
-        if normalize_variance:
-            initial_step_magnitude = optimal_step_dict["Normalize"][function_text][step_size_type]
-        else:
-            initial_step_magnitude = optimal_step_dict["Non-Normalize"][function_text][step_size_type]
-
+def step_size(iteration,normalize_variance,initial_step_magnitude):
     if step_size_type == 1:
         return 1/np.sqrt(iteration+1)*initial_step_magnitude
     elif step_size_type == 2:
@@ -88,6 +102,7 @@ def query_function(function_num,x):
     elif function_num == 2:
         #Parameter should be on the order of 0.01 to 0.5
         return np.log(norm+param)
+       
     return 0
 
 # Randomly initializes the starting point of the optimization
@@ -108,7 +123,7 @@ def random_initialization(magnitude,quad=None):
 
 # Function to minimize the quadratic form
 # Takes in the function to query, random initialization, boolean for normalizing variance printing and plotting argument
-def optimize(function,initialization=random_initialization(initialization_magnitude),normalize_variance = True,verbose = False,plot = False):
+def optimize(function,initial_step,initialization=random_initialization(initialization_magnitude),normalize_variance = True,verbose = False,plot = False):
     # Initialize x values, representing current prediction for minima
     x_values = np.zeros((num_dimensions,iterations))
     x_values[:,0] = initialization
@@ -139,7 +154,7 @@ def optimize(function,initialization=random_initialization(initialization_magnit
             function_evals[i,1] = query_function(function,neg_delta_x)
 
             # accumulate the update and multiply by delta
-            curr_update = np.clip((function_evals[i,0]-function_evals[i,1]),-1,1)*delta
+            curr_update = (function_evals[i,0]-function_evals[i,1])*delta
             update = update + curr_update
 
         function_var = np.var(function_evals)
@@ -150,7 +165,7 @@ def optimize(function,initialization=random_initialization(initialization_magnit
         
         # update current 
         update = update.T.reshape(num_dimensions,1)
-        alpha = step_size(curr_iter,normalize_variance)
+        alpha = step_size(curr_iter,normalize_variance,initial_step)
         x_values[:,curr_iter] = x_values[:,curr_iter-1]-update.T*alpha/(nu*curr_sigma*num_gradient_calculations)
         if verbose:
             if curr_iter % 25 == 0 :
@@ -163,6 +178,45 @@ def optimize(function,initialization=random_initialization(initialization_magnit
         plot_surface(function,x_values,loss,normalize_variance)
     return loss,sigma,dist_from_origin
     
+# Function to minimize the quadratic form
+# Takes in the function to query, random initialization, boolean for normalizing variance printing and plotting argument
+def adagrad_optimize(function,initial_step_magnitude,initialization=random_initialization(initialization_magnitude),verbose = False,plot = False):
+    global num_dimensions
+   # print(initial_step_magnitude)
+    # Initialize x values, representing current prediction for minima
+    x_values = np.zeros((num_dimensions,iterations))
+    x_values[:,0] = initialization
+
+    curr_iter = 0
+    if verbose:
+        print_details(function,curr_iter,x_values)
+
+    loss = np.zeros((iterations))
+    dist_from_origin = np.zeros((iterations))
+    loss[curr_iter] = query_function(function,x_values[:,curr_iter])
+    dist_from_origin[curr_iter] = np.linalg.norm(x_values[:,curr_iter])
+
+    cumulative_grad_magnitude = np.zeros(num_dimensions)
+
+    # Iterate over number of iterations
+    for curr_iter in range(1,iterations):
+        function_evals = np.zeros((num_gradient_calculations,2))
+        for i in range(num_gradient_calculations):
+            curr_grad= np.array([derivative(function,curr_x) for curr_x in x_values[:,curr_iter-1]])
+            cumulative_grad_magnitude += np.square(curr_grad)
+
+        # update current 
+        x_values[:,curr_iter] = x_values[:,curr_iter-1]-initial_step_magnitude/(np.sqrt(cumulative_grad_magnitude)+1e-8)*curr_grad
+        if verbose:
+            if curr_iter % 25 == 0 :
+                print_details(function,curr_iter,x_values)
+        loss[curr_iter] = query_function(function,x_values[:,curr_iter])
+        dist_from_origin[curr_iter] = np.linalg.norm(x_values[:,curr_iter])
+    if verbose:
+        print_details(function,curr_iter,x_values)
+    if plot:
+        plot_surface(function,x_values,loss,normalize_variance)
+    return loss,dist_from_origin
 
 # Plots the quadratic form and the calculated path
 # Quadratic form is color coded using coolwarm mapping
@@ -215,7 +269,7 @@ def parse_args():
     global iterations,initialization_magnitude,nu,num_initializations,step_size_text
     global num_gradient_calculations,generate_surface_plots,verbose,show_plot
     global generate_sigma_plots,function, param, function_text, step_size_type
-    global optimal, initial_step_magnitude
+    global optimal, initial_step_magnitude,start_step,end_step
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--iters", default = LipschitzConstants.iterations,action="store",
@@ -244,10 +298,10 @@ def parse_args():
                     help="Number of dimensions",dest="num_dimensions",type=int)
     parser.add_argument("--param", default = 0,action="store",
                     help="Parameter for query function",dest="param",type=float)
-    parser.add_argument("--init_step_mag", default = 0,action="store",
-                    help="The initial step size",dest="initial_step_mag",type=float)
-    parser.add_argument("--optimal", default = False,action="store_true",
-                    help="Plot with optimal initial step sizes",dest="optimal")
+    parser.add_argument("--start_step", default = 0.001,action="store",
+                    help="Starting step size",dest="start_step",type=float)
+    parser.add_argument("--end_step", default = 3,action="store",
+                    help="Ending step size",dest="end_step",type=float)
     args = parser.parse_args()
 
     iterations = args.iterations
@@ -263,8 +317,8 @@ def parse_args():
     step_size_type = args.step_size_type
     num_dimensions = args.num_dimensions
     param = args.param
-    initial_step_magnitude = args.initial_step_mag
-    optimal = args.optimal
+    start_step = args.start_step
+    end_step = args.end_step
 
     if function == 1:
         function_text = "Quadratic"
@@ -288,96 +342,96 @@ def parse_args():
 
 if __name__ == '__main__':
     parse_args()
-    if generate_surface_plots:
-        initialization = random_initialization(initialization_magnitude,quad = 2)
-        optimize(function, initialization, normalize_variance=True,verbose=verbose,plot=True)
-        optimize(function, initialization, normalize_variance=False,verbose=verbose,plot=True)
-    plt.clf()
 
-    
-    loss = np.zeros((iterations,num_initializations,2))
-    sigmas = np.zeros((iterations-1,num_initializations,2))
-    dist_from_origin = np.zeros((iterations,num_initializations,2))
+    overall_losses = [[],[],[]]
+    overall_distances = [[],[],[]]
+    overall_sigmas = [[],[]]
+    print(function_text,step_size_text)
+    all_step_sizes = np.linspace(start_step,end_step,num=50)
+    for curr_step_size in all_step_sizes:
 
-    for trial in range(num_initializations):
-        if trial % 50 == 0:
-            print("Initialization %d of %d"%(trial,num_initializations))
-        
-        initialization = random_initialization(initialization_magnitude)
-        loss_norm,sigma_norm,dist_from_origin_norm = optimize(function, initialization, normalize_variance=True,verbose=verbose)
-        loss_non_norm,sigma_non_norm,dist_from_origin_non_norm = optimize(function, initialization, normalize_variance=False,verbose=verbose)
-        if generate_sigma_plots:
-            sigmas[:,trial,0] = sigma_norm
-            sigmas[:,trial,1] = sigma_non_norm
-        
-        loss[:,trial,0] = loss_norm
-        loss[:,trial,1] = loss_non_norm
+        loss = np.zeros((iterations,num_initializations,3))
+        sigmas = np.zeros((iterations-1,num_initializations,2))
+        dist_from_origin = np.zeros((iterations,num_initializations,3))
 
-        dist_from_origin[:,trial,0] = dist_from_origin_norm
-        dist_from_origin[:,trial,1] = dist_from_origin_non_norm
+        for trial in range(num_initializations):
+            
+            initialization = random_initialization(initialization_magnitude)
+            loss_norm,sigma_norm,dist_from_origin_norm = optimize(function,curr_step_size, initialization, normalize_variance=True,verbose=verbose)
+            loss_non_norm,sigma_non_norm,dist_from_origin_non_norm = optimize(function, curr_step_size,initialization,  normalize_variance=False,verbose=verbose)
+            loss_ada,dist_from_origin_ada = adagrad_optimize(function, curr_step_size, initialization, verbose=False)
+            if generate_sigma_plots:
+                sigmas[:,trial,0] = sigma_norm
+                sigmas[:,trial,1] = sigma_non_norm
+            
+            loss[:,trial,0] = loss_norm
+            loss[:,trial,1] = loss_non_norm
+            loss[:,trial,2] = loss_ada
 
-    if generate_sigma_plots:
+            dist_from_origin[:,trial,0] = dist_from_origin_norm
+            dist_from_origin[:,trial,1] = dist_from_origin_non_norm
+            dist_from_origin[:,trial,2] = dist_from_origin_ada
+
+        average_loss = np.mean(loss,axis=1)
+        average_distance = np.mean(dist_from_origin,axis=1)
         average_sigma = np.mean(sigmas,axis=1)
-        plt.plot(average_sigma[:,0])
-        plt.plot(average_sigma[:,1])
-        plt.xlabel('Iterations')
-        plt.ylabel('Sigma per Iteration')
-        plt.ylim(ymin=0)
-        if optimal:
-            plt.title('{} Function Sigma with {} Optimal Step Sizes Param {} '.format(function_text,step_size_text,param))
-            plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
 
-            plt.savefig("./Optimal/Sigma_Curves/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {}.png".format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
-        else:
+        overall_losses[0].append(average_loss[-10:,0].mean())
+        overall_losses[1].append(average_loss[-10:,1].mean())
+        overall_losses[2].append(average_loss[-10:,2].mean())
 
-            plt.title('{} Function Sigma with {} Step Sizes Param {} Init Step Mag {}'.format(function_text,step_size_text,param,initial_step_magnitude))
-            plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
 
-            plt.savefig("./Sigma_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {} step mag {}.png".format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param,initial_step_magnitude) , bbox_inches='tight',dpi=400)
-        if show_plot:
-            plt.show()
+        overall_distances[0].append(average_distance[-10:,0].mean())
+        overall_distances[1].append(average_distance[-10:,1].mean())
+        overall_distances[2].append(average_distance[-10:,2].mean())
+        # print("norm",average_distance[-10:,0])
+        # print("ada",average_distance[-10:,2])
+        if generate_sigma_plots:
+            overall_sigmas[0].append(average_sigma[-10:,0].mean())
+            overall_sigmas[1].append(average_sigma[-10:,1].mean())
+
+    plt.clf()
+
+    plt.plot(all_step_sizes,overall_losses[0])
+    plt.plot(all_step_sizes,overall_losses[1])
+    plt.plot(all_step_sizes,overall_losses[2])
+    plt.xlabel('Step Sizes')
+    plt.ylabel('Average Loss')
+
+    plt.title('{} Function Convergence with {} Step Sizes Param {}'.format(function_text,step_size_text,param))
+    plt.legend(['Normalized', 'Non-Normalized','Adagrad'], loc='upper right',prop={'size': 6})
+    plt.savefig("./Step_Size_Search/Loss_Curves/{} Function {} Steps max step {} Dimensions {} iters {} mag {} nu {} init {} calcs {} param {}.png".
+                    format(function_text,step_size_text,end_step,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
+
+    plt.clf()
+    plt.ylim(0,12)
+    plt.plot(all_step_sizes,overall_distances[0])
+    plt.plot(all_step_sizes,overall_distances[1])
+    plt.plot(all_step_sizes,overall_distances[2])
+    plt.xlabel('Step Sizes')
+    plt.ylabel('Average Distances')
+
+    plt.title('{} Function Convergence with {} Step Sizes Param {}'.format(function_text,step_size_text,param))
+    plt.legend(['Normalized', 'Non-Normalized','Adagrad'], loc='upper right',prop={'size': 6})
+    plt.savefig("./Step_Size_Search/Distance_From_Origin_Curves/{} Function {} Steps max step {} Dimensions {} iters {} mag {} nu {} init {} calcs {} param {}.png".
+                    format(function_text,step_size_text,end_step,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
 
 
     plt.clf()
-    average_loss = np.mean(loss,axis=1)
-    plt.plot(average_loss[:,0])
-    plt.plot(average_loss[:,1])
-    
-    plt.xlabel('Iterations')
-    plt.ylabel('Loss')
-    if optimal:
-        plt.title('{} Function Convergence with {} Optimal Step Sizes Param {} '.format(function_text,step_size_text,param))
-        plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
+    if generate_sigma_plots:
+        plt.plot(all_step_sizes,overall_sigmas[0])
+        plt.plot(all_step_sizes,overall_sigmas[1])
+        plt.xlabel('Step Sizes')
+        plt.ylabel('Average Function Variance')
 
-        plt.savefig("./Optimal/Loss_Curves/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {}.png".format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
-    else:
-        plt.title('{} Function Convergence with {} Step Sizes Param {} Init Step Mag {}'.format(function_text,step_size_text,param,initial_step_magnitude))
+        plt.title('{} Function Convergence with {} Step Sizes Param {}'.format(function_text,step_size_text,param))
         plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
-        plt.savefig("./Loss_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {} step mag {}.png".
-                    format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param,initial_step_magnitude) , bbox_inches='tight',dpi=400)
+        plt.savefig("./Step_Size_Search/Sigma_Curves/{} Function {} Steps max step {} Dimensions {} iters {} mag {} nu {} init {} calcs {} param {}.png".
+                    format(function_text,step_size_text,end_step,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
 
-    plt.clf()
-    average_dist_from_origin = np.mean(dist_from_origin,axis=1)
-    plt.plot(average_dist_from_origin[:,0])
-    plt.plot(average_dist_from_origin[:,1])
-    
-    plt.xlabel('Iterations')
-    plt.ylabel('Distance from Origin')
-    plt.ylim(ymin=0)
-    plt.ylim(ymax=12)
-    if optimal:
-        plt.title('{} Function Convergence with {} Optimal Step Sizes Param {} '.format(function_text,step_size_text,param))
-        plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
 
-        plt.savefig("./Optimal/Distance_From_Origin_Curves/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {}.png".format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
-    else:
-        plt.title('{} Function Convergence with {} Step Sizes Param {} Init Step Mag {}'.format(function_text,step_size_text,param,initial_step_magnitude))
-        plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
-        plt.savefig("./Distance_From_Origin_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {} step mag {}.png".
-                    format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param,initial_step_magnitude) , bbox_inches='tight',dpi=400)
-    if show_plot:
-        plt.show()
-    
+
+
 
 
     
