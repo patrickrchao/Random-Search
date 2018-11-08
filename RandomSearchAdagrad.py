@@ -198,7 +198,6 @@ def adagrad_optimize(function,initialization=random_initialization(initializatio
     # Initialize x values, representing current prediction for minima
     x_values = np.zeros((num_dimensions,iterations))
     x_values[:,0] = initialization
-
     curr_iter = 0
     if verbose:
         print_details(curr_iter,x_values)
@@ -209,13 +208,13 @@ def adagrad_optimize(function,initialization=random_initialization(initializatio
     dist_from_origin[curr_iter] = np.linalg.norm(x_values[:,curr_iter])
 
     cumulative_grad_magnitude = np.zeros(num_dimensions)
-
     # Iterate over number of iterations
     for curr_iter in range(1,iterations):
         function_evals = np.zeros((num_gradient_calculations,2))
         for i in range(num_gradient_calculations):
             curr_grad= np.array([derivative(function,curr_x) for curr_x in x_values[:,curr_iter-1]])
             cumulative_grad_magnitude += np.square(curr_grad)
+
         alpha = step_size(curr_iter,normalize_variance=False,adagrad=True)
         x_values[:,curr_iter] = x_values[:,curr_iter-1]-alpha/np.sqrt(cumulative_grad_magnitude)*curr_grad
         if verbose:
@@ -228,6 +227,8 @@ def adagrad_optimize(function,initialization=random_initialization(initializatio
         print_details(function,curr_iter,x_values)
     if plot:
         plot_surface(function,x_values,loss,normalize_variance)
+
+
     return loss,dist_from_origin
     
 
