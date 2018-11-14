@@ -3,7 +3,7 @@
  9/10/18 
  ML Research with Horia Mania
 
- Experimenting with changing lipschitz constant regimes
+ Experimenting with Adagrad
  '''
 import argparse
 import sys
