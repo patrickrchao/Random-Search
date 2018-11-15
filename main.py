@@ -7,7 +7,6 @@
 
  '''
 import argparse
-import sys
 import numpy as np
 # from mpl_toolkits.mplot3d import Axes3D
 # import matplotlib.pyplot as plt
@@ -108,7 +107,7 @@ def parse_args():
     # Optional argument for the quadrant the initialization should lie in for graphical purposes
 def random_initialization(num_dimensions,magnitude,quadrant=None):
     if not (quadrant == None):
-        angle = np.random.rand()*(np.pi/2)+(quad-1)*(np.pi/2)
+        angle = np.random.rand()*(np.pi/2)+(quadrant-1)*(np.pi/2)
         x = np.cos(angle)
         y = np.sin(angle) 
         initialization = np.array([[x,y]]).flatten()*magnitude
@@ -134,32 +133,29 @@ if __name__ == '__main__':
     initialization_magnitude = main_params["INITIALIZATION_MAGNITUDE"]
 
     oracle = oracle(oracle_params)
+    optimizer_types = ["NORMALIZE", "NONNORMALIZE", "ADAGRAD"]
+    optimizers = [optimizer(optimization_params, step_params, optimizer_type=optimizer_type) for optimizer_type in
+                  optimizer_types]
     if main_params["SURFACE_PLOTS"] or main_params["CONTOUR_PLOTS"]:
 
         init = random_initialization(num_dimensions=num_dimensions,magnitude=initialization_magnitude,quadrant = 2)
-        normalized_optimizer = optimizer(optimization_params,optimizer_type="NORMALIZE")
-        nonnormalized_optimizer = optimizer(optimization_params,optimizer_type="NONNORMALIZE")
 
-        normalized_optimizer.optimization_step(step_params)
-        nonnormalized_optimizer.optimization_step(step_params)
+        optimizer_x = []
 
-        _,_,norm_x = normalized_optimizer.optimize(oracle=oracle,initialization = init)
-        _,_,non_norm_x = nonnormalized_optimizer.optimize(oracle=oracle,initialization = init)
-    
-        if main_params["SURFACE_PLOTS"]:
-            params["NORMALIZE_VARIANCE"] = True 
-            generate_plots(norm_x,params,plot_type="Surface")
-            params["NORMALIZE_VARIANCE"] = False 
-            generate_plots(non_norm_x,params,plot_type="Surface")
+        for curr_optimizer in optimizers:
+            _, _, x_values = curr_optimizer.optimize(oracle, init)
+            optimizer_x.append(x_values)
 
-        if main_params["CONTOUR_PLOTS"]:
-            params["NORMALIZE_VARIANCE"] = True
-            generate_plots(norm_x, params, plot_type="Contour")
-            params["NORMALIZE_VARIANCE"] = False
-            generate_plots(non_norm_x, params, plot_type="Contour")
+
+        for curr_optimizer, x_values in zip(optimizers,optimizer_x):
+            params["NORMALIZE_VARIANCE"] = curr_optimizer.optimizer_type
+            #if main_params["SURFACE_PLOTS"]:
+            generate_plots(params, x_values, plot_type="Surface")
+            if main_params["CONTOUR_PLOTS"]:
+                generate_plots(params, x_values, plot_type="Contour")
 
     iterations = optimization_params["ITERATIONS"]
-    optimizer_types = ["NORMALIZE","NON-NORMALIZE","ADAGRAD"]
+
     outputs = []
     loss = []
     dist_from_origin = []
@@ -167,7 +163,6 @@ if __name__ == '__main__':
 
         init = random_initialization(num_dimensions=num_dimensions,magnitude=initialization_magnitude)
 
-        optimizers = [optimizer(optimization_params,step_params,optimizer_type=optimizer_type) for optimizer_type in optimizer_types]
         optimizer_losses = []
         optimizer_dists = []
         for curr_optimizer in optimizers:

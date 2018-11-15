@@ -239,7 +239,7 @@ def plot_surface(function,x_values,loss,normalize_variance):
     if normalize_variance:
         normalize_variance_text = "Normalized"
     else:
-        normalize_variance_text = "Non-Normalized"
+        normalize_variance_text = "NONNORMALIZEd"
     plt.xlabel('X')
     plt.ylabel('Y')
     if optimal:
@@ -399,7 +399,7 @@ if __name__ == '__main__':
     plt.ylabel('Average Loss')
 
     plt.title('{} Function Convergence with {} Step Sizes Param {}'.format(function_text,step_size_text,param))
-    plt.legend(['Normalized', 'Non-Normalized','Adagrad'], loc='upper right',prop={'size': 6})
+    plt.legend(['Normalized', 'NONNORMALIZEd','Adagrad'], loc='upper right',prop={'size': 6})
     plt.savefig("./Step_Size_Search/Loss_Curves/{} Function {} Steps max step {} Dimensions {} iters {} mag {} nu {} init {} calcs {} param {}.png".
                     format(function_text,step_size_text,end_step,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
 
@@ -412,7 +412,7 @@ if __name__ == '__main__':
     plt.ylabel('Average Distances')
 
     plt.title('{} Function Convergence with {} Step Sizes Param {}'.format(function_text,step_size_text,param))
-    plt.legend(['Normalized', 'Non-Normalized','Adagrad'], loc='upper right',prop={'size': 6})
+    plt.legend(['Normalized', 'NONNORMALIZEd','Adagrad'], loc='upper right',prop={'size': 6})
     plt.savefig("./Step_Size_Search/Distance_From_Origin_Curves/{} Function {} Steps max step {} Dimensions {} iters {} mag {} nu {} init {} calcs {} param {}.png".
                     format(function_text,step_size_text,end_step,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
 
@@ -425,7 +425,7 @@ if __name__ == '__main__':
         plt.ylabel('Average Function Variance')
 
         plt.title('{} Function Convergence with {} Step Sizes Param {}'.format(function_text,step_size_text,param))
-        plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
+        plt.legend(['Normalized', 'NONNORMALIZEd'], loc='upper right',prop={'size': 6})
         plt.savefig("./Step_Size_Search/Sigma_Curves/{} Function {} Steps max step {} Dimensions {} iters {} mag {} nu {} init {} calcs {} param {}.png".
                     format(function_text,step_size_text,end_step,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
 

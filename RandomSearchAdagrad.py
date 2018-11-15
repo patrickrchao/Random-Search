@@ -56,7 +56,7 @@ def step_size(iteration,normalize_variance,adagrad=False):
             if normalize_variance:
                 initial_step_magnitude = optimal_step_dict["Normalize"][function_text][step_size_type]
             else:
-                initial_step_magnitude = optimal_step_dict["Non-Normalize"][function_text][step_size_type]
+                initial_step_magnitude = optimal_step_dict["NONNORMALIZE"][function_text][step_size_type]
 
     if step_size_type == 1:
         return 1/np.sqrt(iteration+1)*initial_step_magnitude
@@ -253,7 +253,7 @@ def plot_surface(function,x_values,loss,normalize_variance):
     if normalize_variance:
         normalize_variance_text = "Normalized"
     else:
-        normalize_variance_text = "Non-Normalized"
+        normalize_variance_text = "NONNORMALIZEd"
     plt.xlabel('X')
     plt.ylabel('Y')
     if optimal:
@@ -398,13 +398,13 @@ if __name__ == '__main__':
         plt.ylim(ymin=0)
         if optimal:
             plt.title('{} Function Sigma with {} Optimal Step Sizes Param {} '.format(function_text,step_size_text,param))
-            plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
+            plt.legend(['Normalized', 'NONNORMALIZEd'], loc='upper right',prop={'size': 6})
 
             plt.savefig("./Optimal/Sigma_Curves/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {}.png".format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
         else:
 
             plt.title('{} Function Sigma with {} Step Sizes Param {} Init Step Mag {}'.format(function_text,step_size_text,param,initial_step_magnitude))
-            plt.legend(['Normalized', 'Non-Normalized'], loc='upper right',prop={'size': 6})
+            plt.legend(['Normalized', 'NONNORMALIZEd'], loc='upper right',prop={'size': 6})
 
             plt.savefig("./Sigma_Curves/Lipschitz/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {} step mag {}.png".format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param,initial_step_magnitude) , bbox_inches='tight',dpi=400)
         if show_plot:
@@ -421,11 +421,11 @@ if __name__ == '__main__':
     plt.ylabel('Loss')
     if optimal:
         plt.title('{} Function Convergence with {} Optimal Step Sizes Param {} '.format(function_text,step_size_text,param))
-        plt.legend(['Normalized', 'Non-Normalized','Adagrad'], loc='upper right',prop={'size': 6})
+        plt.legend(['Normalized', 'NONNORMALIZEd','Adagrad'], loc='upper right',prop={'size': 6})
         plt.savefig("./Optimal/Adagrad_Loss_Curves/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {}.png".format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
     else:
         plt.title('{} Function Convergence with {} Step Sizes Param {} Init Step Mag {}'.format(function_text,step_size_text,param,initial_step_magnitude))
-        plt.legend(['Normalized', 'Non-Normalized','Adagrad'], loc='upper right',prop={'size': 6})
+        plt.legend(['Normalized', 'NONNORMALIZEd','Adagrad'], loc='upper right',prop={'size': 6})
         plt.savefig("./Adagrad/Loss_Curves/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {} step mag {}.png".
                     format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param,initial_step_magnitude) , bbox_inches='tight',dpi=400)
 
@@ -441,12 +441,12 @@ if __name__ == '__main__':
     plt.ylim(ymax=12)
     if optimal:
         plt.title('{} Function Convergence with {} Optimal Step Sizes Param {} '.format(function_text,step_size_text,param))
-        plt.legend(['Normalized', 'Non-Normalized','Adagrad'], loc='upper right',prop={'size': 6})
+        plt.legend(['Normalized', 'NONNORMALIZEd','Adagrad'], loc='upper right',prop={'size': 6})
 
         plt.savefig("./Optimal/Adagrad_Distance_From_Origin_Curves/{} Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {}.png".format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param) , bbox_inches='tight',dpi=400)
     else:
         plt.title('{} Function Convergence with {} Step Sizes Param {} Init Step Mag {}'.format(function_text,step_size_text,param,initial_step_magnitude))
-        plt.legend(['Normalized', 'Non-Normalized','Adagrad'], loc='upper right',prop={'size': 6})
+        plt.legend(['Normalized', 'NONNORMALIZEd','Adagrad'], loc='upper right',prop={'size': 6})
         plt.savefig("./Adagrad/Distance_From_Origin_Curves/ Function {} Step Sizes Dimensions {} iters {} mag {} nu {} initializations {} calcs {} param {} step mag {}.png".
                     format(function_text,step_size_text,num_dimensions,iterations,initialization_magnitude,nu,num_initializations,num_gradient_calculations,param,initial_step_magnitude) , bbox_inches='tight',dpi=400)
     if show_plot:

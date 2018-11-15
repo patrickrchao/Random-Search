@@ -7,4 +7,4 @@ normalize_variance = True
 num_dimensions = 2
 
 condition_num = 2
-function_param = 0.1
+function_param = 0.001

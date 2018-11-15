@@ -15,7 +15,7 @@ step_mag={
     }
     
     },
-    "NON-NORMALIZE":{
+    "NONNORMALIZE":{
     "LOG":{
     "INV_SQ_ROOT":2.9,
     "LOG":2,
