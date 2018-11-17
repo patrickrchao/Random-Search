@@ -1,3 +1,7 @@
 .DS_Store
 __pycache__
 *.zip
+Normalized\ Gradient\ Descent\ Proof
+.idea
+.gitignore
+.ipynb_checkpoints
