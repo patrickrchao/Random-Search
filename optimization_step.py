@@ -1,3 +1,13 @@
+'''
+ Patrick Chao
+ 11/8/18
+ Optimization Research with Horia Mania
+
+ Random Search Optimization Step Function
+
+ '''
+
+
 import numpy as np
 import pandas as pd
 import warnings
@@ -22,7 +32,7 @@ class optimization_step:
             try:
                 self.init_step_magnitude = optimization_step.optimal_step_dict.loc[index].values[0]
             except:
-                warnings.warn("Optimal step size not found for \n"+str(index))
+                warnings.warn("Optimal step size not found for \n" + str(index))
                 self.init_step_magnitude = step_params["INITIAL_STEP_MAGNITUDE"]
 
         else:

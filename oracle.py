@@ -1,3 +1,13 @@
+'''
+ Patrick Chao
+ 11/8/18
+ Optimization Research with Horia Mania
+
+ Random Search Function Oracle
+
+ '''
+
+
 import numpy as np
 
 
@@ -6,7 +16,6 @@ class oracle:
         self.function = params["FUNCTION"]
         self.condition_num = params["CONDITION_NUM"]
         self.function_param = params["FUNCTION_PARAM"]
-
         self.quadratic_threshold = 5
 
     # Function Derivative

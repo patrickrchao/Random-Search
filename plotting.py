@@ -1,3 +1,12 @@
+'''
+ Patrick Chao
+ 11/8/18
+ Optimization Research with Horia Mania
+
+ Random Search Plotting
+
+ '''
+
 from oracle import oracle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -38,8 +47,8 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
         optimizer_type = string_format(params["OPTIMIZER_TYPE"])
         file_name += "{} ".format(optimizer_type)
         plot_title += "{} ".format(optimizer_type)
-        assert (num_dimensions == 2 and values.shape[
-            0] == 2), "Dimensions is not equal to 2, surface plot not available."
+        assert (num_dimensions == 2 and values.shape[0] == 2), \
+            "Dimensions is not equal to 2, surface plot not available."
 
     if plot_type == "Surface":
 
@@ -71,6 +80,7 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
         plt.xlabel('X')
         plt.ylabel('Y')
 
+
     elif plot_type == "Contour":
 
         minimum = function_oracle.query_function(np.array([[0], [0]])) - 1
@@ -85,8 +95,14 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
             [function_oracle.query_function(np.array([[x], [y]])) for x, y in zip(np.ravel(X), np.ravel(Y))]) - minimum
         Z = evaluated.reshape(X.shape)
 
-        levels = np.array(
-            [function_oracle.query_function(np.array([[x], [0]])) for x in np.linspace(0.1, max_x * 2, 20)]) - minimum
+        if oracle_params['FUNCTION'] == "QUADRATIC":
+            levels = np.array(
+                [function_oracle.query_function(np.array([[x], [x]])) for x in np.geomspace(0.1, max_x, 20)]) - minimum
+        else:
+            levels = np.array(
+                [function_oracle.query_function(np.array([[x], [x]])) for x in
+                 np.linspace(0.1, max_x, 20)]) - minimum
+
         ax.contourf(X, Y, Z, levels, cmap="viridis", norm=LogNorm(),extend='both')
         ax.scatter(values[0, :], values[1, :], cmap='plasma', s=1.4, alpha=1, c=np.arange(0, values.shape[1]))
 
@@ -106,7 +122,6 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
     else:
 
         average_values = np.median(values, axis=0).squeeze()
-
         for i in range(average_values.shape[0]):
             sd = np.sqrt(np.var(values[:, i, :], axis=0).squeeze() / values.shape[0])
             smooth_sd = gaussian_filter(sd, sigma=2)
@@ -130,18 +145,18 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
                nu, queries, function_param, condition_num)
     # Update file path and plot title
     if step_params["OPTIMAL"]:
-        plot_title += 'Convergence with {} Optimal Step Sizes Param {} '. \
+        plot_title += 'Convergence \n {} Optimal Step Sizes Param {}'. \
             format(step_size, function_param)
         file_path += "Optimal/"
     else:
         file_name += " step mag {}".format(initial_step_magnitude)
-        plot_title += 'Convergence with {} Step Sizes Param {} Init Step Mag {}'. \
+        plot_title += 'Convergence \n {} Step Sizes Param {} Init Step Mag {}'. \
             format(step_size, function_param, initial_step_magnitude)
     file_path += plot_type.replace(" ", "_") + "_Plots/"
 
     plt.title(plot_title)
 
-    plt.savefig(file_path + file_name + ".png", bbox_inches='tight', dpi=400)
+    plt.savefig(file_path + file_name + ".png", dpi=400)
     plt.clf()
 
 

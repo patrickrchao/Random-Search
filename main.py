@@ -1,11 +1,11 @@
 '''
  Patrick Chao 
  11/8/18 
- ML Research with Horia Mania
+ Optimization Research with Horia Mania
 
  Random Search Main File
-
  '''
+
 import argparse
 import numpy as np
 import CONSTANTS
@@ -15,6 +15,7 @@ from plotting import generate_plots
 import random
 
 
+# Initial logic for parsing arguments for optimization
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -90,11 +91,10 @@ def parse_args():
 
     return main_params, optimization_params, step_params, oracle_params
 
-    # Randomly initializes the starting point of the optimization
-    # Takes the magnitude of the initialization as a parameter
-    # Optional argument for the quadrant the initialization should lie in for graphical purposes
 
-
+# Randomly initializes the starting point of the optimization
+# Takes the magnitude of the initialization as a parameter
+# Optional argument for the quadrant the initialization should lie in for graphical purposes
 def random_initialization(num_dimensions, magnitude, quadrant=None):
     if not (quadrant == None):
         angle = np.random.rand() * (np.pi / 2) + (quadrant - 1) * (np.pi / 2)
@@ -109,6 +109,7 @@ def random_initialization(num_dimensions, magnitude, quadrant=None):
         return (np.array(coords) / r) * magnitude
 
 
+# Computes loss and distance from origin for the optimizers
 def optimize_trials(initializations, num_dimensions, initialization_magnitude, optimizers):
     loss = []
     dist_from_origin = []
@@ -125,7 +126,8 @@ def optimize_trials(initializations, num_dimensions, initialization_magnitude, o
         loss.append(optimizer_losses)
         dist_from_origin.append(optimizer_dists)
 
-    return loss, dist_from_origin
+    return np.array(loss), np.array(dist_from_origin)
+
 
 if __name__ == '__main__':
     # Set optimizer types
@@ -150,32 +152,35 @@ if __name__ == '__main__':
     sweep = CONSTANTS.sweep
     interval_shrinkage = CONSTANTS.interval_shrinkage
 
+    # Step size parameter search
     if main_params["SEARCH"]:
         step_params["OPTIMAL"] = False
         optimal_step_sizes = []
+
         # Iterate over optimizer types
         for optimizer_type in optimizer_types:
             start_step = CONSTANTS.start_step
             end_step = CONSTANTS.end_step
+
             # Iterate over number of binary search bisections
             for curr_depth in range(depth):
                 average_losses = []
                 interval_length = end_step - start_step
                 new_interval_length = interval_length * interval_shrinkage
+
                 # Iterate over number of samples
                 for curr_step_size in np.linspace(start_step, end_step, num=sweep):
                     step_params["INITIAL_STEP_MAGNITUDE"] = curr_step_size
                     optimizers = [optimizer(optimization_params, step_params,
-                                                        oracle_params, optimizer_type=optimizer_type)]
+                                            oracle_params, optimizer_type=optimizer_type)]
                     loss, _ = optimize_trials(initializations, num_dimensions, initialization_magnitude, optimizers)
-
                     loss = np.array(loss).squeeze(axis=1)
                     average_loss = np.median(loss[:, -5:])
                     average_losses.append(average_loss)
 
                 curr_optimal_step = np.linspace(start_step, end_step, num=sweep)[np.argmin(average_losses)]
                 # print(optimizer_type,curr_depth,curr_optimal_step)
-                start_step = max(curr_optimal_step - new_interval_length / 2, 0)
+                start_step = max(curr_optimal_step - new_interval_length / 2, 0.0001)
                 end_step = curr_optimal_step + new_interval_length / 2
 
             optimal_step_sizes.append(curr_optimal_step)
@@ -190,16 +195,19 @@ if __name__ == '__main__':
         optimizers = [optimizer(optimization_params, step_params, oracle_params, optimizer_type=optimizer_type)
                       for optimizer_type in optimizer_types]
 
+        # Generate surface or contour plots if necessary
         if main_params["SURFACE_PLOTS"] or main_params["CONTOUR_PLOTS"]:
 
             init = random_initialization(num_dimensions=num_dimensions, magnitude=initialization_magnitude, quadrant=2)
 
+            # Location for each iteration
             optimizer_x = []
 
+            # Optimize
             for curr_optimizer in optimizers:
                 _, _, x_values = curr_optimizer.optimize(oracle, init)
                 optimizer_x.append(x_values)
-
+            # Generate plots
             for curr_optimizer, x_values in zip(optimizers, optimizer_x):
                 params["OPTIMIZER_TYPE"] = curr_optimizer.optimizer_type
 
@@ -208,8 +216,7 @@ if __name__ == '__main__':
                 if main_params["CONTOUR_PLOTS"]:
                     generate_plots(params, x_values, plot_type="Contour")
 
+        # Calculate loss and distance from origin values
         loss, dist_from_origin = optimize_trials(initializations, num_dimensions, initialization_magnitude, optimizers)
-        loss = np.array(loss)
-        dist_from_origin = np.array(dist_from_origin)
         generate_plots(params, loss, "Loss", optimizer_types)
         generate_plots(params, dist_from_origin, "Distance from Origin", optimizer_types)

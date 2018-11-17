@@ -1,7 +1,7 @@
 '''
  Patrick Chao 
  11/8/18 
- ML Research with Horia Mania
+ Optimization Research with Horia Mania
 
  Random Search Optimize
 
