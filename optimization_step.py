@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import warnings
 
-
+# Handle all the step size function logic for optimization
 class optimization_step:
     optimal_step_dict = pd.read_csv("OptimalInitialStepSizes.csv")
     optimal_step_dict = optimal_step_dict.set_index(['FUNCTION', 'PARAM', 'CONDITION_NUM',
@@ -38,9 +38,11 @@ class optimization_step:
         else:
             self.init_step_magnitude = step_params["INITIAL_STEP_MAGNITUDE"]
 
+    # Reset iteration for new optimizer
     def reset_iteration(self):
         self.iteration = 1
 
+    # Return the step size given the step function type
     def step_size(self):
         step_size_map = {
             "INV_SQ_ROOT": self.inv_sq_root_step(),
@@ -52,12 +54,15 @@ class optimization_step:
         self.iteration += 1
         return step
 
+    # 1/sqrt(t+1) decay
     def inv_sq_root_step(self):
         return 1 / np.sqrt(self.iteration + 1) * self.init_step_magnitude
 
+    # 1/log(t+1) decay
     def log_step(self):
         return 1 / (np.log(self.iteration) + 1) * self.init_step_magnitude
 
+    # Halve step size every n_i iterations, n_i doubles with every step size halving
     def geometric_step(self):
         curr_step = self.init_step_magnitude
         amount_to_halve = 2
@@ -70,5 +75,6 @@ class optimization_step:
                 amount_to_halve *= 2
         return curr_step
 
+    # Constant step size
     def constant_step(self):
         return self.init_step_magnitude

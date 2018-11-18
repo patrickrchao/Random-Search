@@ -39,8 +39,6 @@ class oracle:
         # Quadratic
         if self.function == "QUADRATIC":
             # Parameter should be on the order of 0.1 to 10
-            if np.linalg.norm(x) == 0:
-                return 0
             return oracle.norm(mat @ x, self.function_param)
 
         elif self.function == "LOG":
@@ -51,5 +49,8 @@ class oracle:
 
         return 0
 
+    # Return the p-norm of a vector of an arbitrary p
     def norm(vec, p):
+        if np.linalg.norm(vec) == 0:
+            return 0
         return (sum(np.abs(vec) ** p) ** (1. / p)).squeeze()

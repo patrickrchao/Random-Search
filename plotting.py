@@ -18,6 +18,9 @@ from matplotlib.colors import LogNorm
 from scipy.ndimage import gaussian_filter
 
 
+# Values: the values to be plotted
+# Plot type: Contour/Surface/Loss/Distance from Origin
+# Optimizer Types: Adagrad, Normalized, Nonnormalized
 def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
     # Retrieve all params
     optimization_params = params['OPTIMIZATION']
@@ -40,8 +43,8 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
     file_name = "{} Function ".format(function)
     plot_title = "{} Function ".format(function)
     file_path = "./"
-
-    # If creating surface plot 
+    max_x = 0
+    # If creating surface plot or contour
     if plot_type == "Surface" or plot_type == "Contour":
         function_oracle = oracle(oracle_params)
         optimizer_type = string_format(params["OPTIMIZER_TYPE"])
@@ -50,6 +53,7 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
         assert (num_dimensions == 2 and values.shape[0] == 2), \
             "Dimensions is not equal to 2, surface plot not available."
 
+    # Logic for creating surface plot
     if plot_type == "Surface":
 
         # Begin plotting
@@ -60,16 +64,17 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
         plt.ylim(top=max_x)
         plt.xlim(left=-max_x)
         plt.xlim(right=max_x)
-        x = np.arange(-max_x, max_x, max_x / 50)
-        y = np.arange(-max_x, max_x, max_x / 50)
+
+        # Calculate grid values
+        x = np.arange(-max_x - 0.01, max_x + 0.01, max_x / 50)
+        y = np.arange(-max_x - 0.01, max_x + 0.01, max_x / 50)
         X, Y = np.meshgrid(x, y)
-
         function_oracle = oracle(oracle_params)
-
         evaluated_grid = np.array(
             [function_oracle.query_function(np.array([[x], [y]])) for x, y in zip(np.ravel(X), np.ravel(Y))])
-
         Z = evaluated_grid.reshape(X.shape)
+
+        # Evaluate function at given values
         evaluated_points = np.array([function_oracle.query_function(np.array([[x], [y]])) for x, y in values.T])
         surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
                                linewidth=0, antialiased=False, alpha=0.4)
@@ -80,30 +85,25 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
         plt.xlabel('X')
         plt.ylabel('Y')
 
-
+    # Logic for creating contour plot
     elif plot_type == "Contour":
 
         minimum = function_oracle.query_function(np.array([[0], [0]])) - 1
         fig, ax = plt.subplots()
-
         max_x = initialization_magnitude * 1.1
+
+        # Calculate grid values
         x = np.linspace(-max_x - 0.01, max_x + 0.01, 200)
         y = np.linspace(-max_x - 0.01, max_x + 0.01, 200)
         X, Y = np.meshgrid(x, y)
-
         evaluated = np.array(
             [function_oracle.query_function(np.array([[x], [y]])) for x, y in zip(np.ravel(X), np.ravel(Y))]) - minimum
         Z = evaluated.reshape(X.shape)
 
-        if oracle_params['FUNCTION'] == "QUADRATIC":
-            levels = np.array(
-                [function_oracle.query_function(np.array([[x], [x]])) for x in np.geomspace(0.1, max_x, 20)]) - minimum
-        else:
-            levels = np.array(
-                [function_oracle.query_function(np.array([[x], [x]])) for x in
-                 np.linspace(0.1, max_x, 20)]) - minimum
+        levels = np.array(
+            [function_oracle.query_function(np.array([[x], [x]])) for x in np.linspace(0.1, max_x, 20)]) - minimum
 
-        ax.contourf(X, Y, Z, levels, cmap="viridis", norm=LogNorm(),extend='both')
+        ax.contourf(X, Y, Z, levels, cmap="viridis", norm=LogNorm(), extend='both')
         ax.scatter(values[0, :], values[1, :], cmap='plasma', s=1.4, alpha=1, c=np.arange(0, values.shape[1]))
 
         for i in range(1, values.shape[1]):

@@ -1,3 +1,12 @@
+'''
+ Patrick Chao
+ 11/8/18
+ Optimization Research with Horia Mania
+
+ Random Search Optimization Constants
+
+ '''
+
 iterations = 50
 initialization_magnitude = 10
 nu = 0.1
@@ -12,6 +21,6 @@ function_param = 0.0001
 start_step = 0.0001
 end_step = 10
 
-depth = 10
+depth = 15
 sweep = 5
-interval_shrinkage = 0.8
+interval_shrinkage = 0.7

@@ -3,7 +3,7 @@
  11/8/18 
  Optimization Research with Horia Mania
 
- Random Search Optimize
+ Random Search Optimization Calculations
 
  '''
 from optimization_step import optimization_step
