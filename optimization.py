@@ -67,7 +67,7 @@ class optimizer:
 
             # update current 
             update = update.T.reshape(num_dimensions, 1)
-            alpha = self.step_function.step_size()
+            alpha = self.step_function.step_size(x_values[:, curr_iter - 1])
             x_values[:, curr_iter] = x_values[:, curr_iter - 1] - update.T * alpha / (
                     self.nu * curr_sigma * self.queries)
 
@@ -99,7 +99,7 @@ class optimizer:
                 curr_grad = oracle.derivative(x_values[:, curr_iter - 1])
                 cumulative_grad_magnitude += np.square(curr_grad)
 
-            alpha = self.step_function.step_size()
+            alpha = self.step_function.step_size(x_values[:, curr_iter - 1])
             x_values[:, curr_iter] = x_values[:, curr_iter - 1] - alpha / np.sqrt(cumulative_grad_magnitude) * curr_grad
 
             loss[curr_iter] = oracle.query_function(x_values[:, curr_iter])

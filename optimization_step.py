@@ -11,6 +11,7 @@
 import numpy as np
 import pandas as pd
 import warnings
+from oracle import oracle
 
 # Handle all the step size function logic for optimization
 class optimization_step:
@@ -27,7 +28,11 @@ class optimization_step:
         function_type = oracle_params["FUNCTION"]
         condition_num = oracle_params["CONDITION_NUM"]
         function_param = oracle_params["FUNCTION_PARAM"]
-        if step_params["OPTIMAL"]:
+        self.oracle_params = oracle_params
+        if self.step_function == "LIPSCHITZ" and self.optimizer_type != "NONNORMALIZE":
+            self.step_function = "INV_SQ_ROOT"
+
+        if step_params["OPTIMAL"] and self.step_function != "LIPSCHITZ":
             index = function_type, function_param, condition_num, optimizer_type, self.step_function
             try:
                 self.init_step_magnitude = optimization_step.optimal_step_dict.loc[index].values[0]
@@ -43,14 +48,18 @@ class optimization_step:
         self.iteration = 1
 
     # Return the step size given the step function type
-    def step_size(self):
+    def step_size(self,x):
         step_size_map = {
-            "INV_SQ_ROOT": self.inv_sq_root_step(),
-            "LOG": self.log_step(),
-            "GEOMETRIC": self.geometric_step(),
-            "CONSTANT": self.constant_step()
+            "INV_SQ_ROOT": self.inv_sq_root_step,
+            "LOG": self.log_step,
+            "GEOMETRIC": self.geometric_step,
+            "CONSTANT": self.constant_step,
+            "LIPSCHITZ": self.lipschitz_step
         }
-        step = step_size_map[self.step_function]
+        if self.step_function == "LIPSCHITZ":
+            step = step_size_map[self.step_function](x)
+        else:
+            step = step_size_map[self.step_function]()
         self.iteration += 1
         return step
 
@@ -78,3 +87,11 @@ class optimization_step:
     # Constant step size
     def constant_step(self):
         return self.init_step_magnitude
+
+    #
+    def lipschitz_step(self,x):
+        function_oracle = oracle(self.oracle_params)
+        step_size = 1/function_oracle.lipschitz(x)
+        return step_size
+
+

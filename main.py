@@ -46,7 +46,7 @@ def parse_args():
     parser.add_argument("--step_function", default="INV_SQ_ROOT", action="store",
                         help="INV_SQ_ROOT: inverse square root, LOG: 1/log, GEOMETRIC: \
                     geometric in step and iterations, CONSTANT: constant over all iterations", dest="step_function")
-    parser.add_argument("--init_step_mag", default=0.1, action="store",
+    parser.add_argument("--init_step_mag", default=1, action="store",
                         help="The initial step size", dest="initial_step_mag", type=float)
     parser.add_argument("--optimal", default=False, action="store_true",
                         help="Plot with optimal initial step sizes", dest="optimal")
@@ -78,13 +78,13 @@ def parse_args():
     }
 
     step_params = {
-        'STEP_FUNCTION': args.step_function,
+        'STEP_FUNCTION': args.step_function.upper(),
         'INITIAL_STEP_MAGNITUDE': args.initial_step_mag,
         'OPTIMAL': args.optimal,
     }
 
     oracle_params = {
-        'FUNCTION': args.function,
+        'FUNCTION': args.function.upper(),
         'CONDITION_NUM': args.condition_num,
         'FUNCTION_PARAM': args.function_param
     }
@@ -156,6 +156,7 @@ if __name__ == '__main__':
     if main_params["SEARCH"]:
         step_params["OPTIMAL"] = False
         optimal_step_sizes = []
+
 
         # Iterate over optimizer types
         for optimizer_type in optimizer_types:

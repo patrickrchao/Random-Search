@@ -39,6 +39,7 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
     condition_num = oracle_params['CONDITION_NUM']
     initial_step_magnitude = step_params['INITIAL_STEP_MAGNITUDE']
 
+
     # Begin file name
     file_name = "{} Function ".format(function)
     plot_title = "{} Function ".format(function)
@@ -48,6 +49,8 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
     if plot_type == "Surface" or plot_type == "Contour":
         function_oracle = oracle(oracle_params)
         optimizer_type = string_format(params["OPTIMIZER_TYPE"])
+        if step_size == "LIPSCHITZ" and optimizer_type != "NONNORMALIZE":
+            step_size = "INV_SQ_ROOT"
         file_name += "{} ".format(optimizer_type)
         plot_title += "{} ".format(optimizer_type)
         assert (num_dimensions == 2 and values.shape[0] == 2), \
@@ -66,8 +69,8 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
         plt.xlim(right=max_x)
 
         # Calculate grid values
-        x = np.arange(-max_x - 0.01, max_x + 0.01, max_x / 50)
-        y = np.arange(-max_x - 0.01, max_x + 0.01, max_x / 50)
+        x = np.linspace(-max_x - 0.01, max_x + 0.01, 200)
+        y = np.linspace(-max_x - 0.01, max_x + 0.01, 200)
         X, Y = np.meshgrid(x, y)
         function_oracle = oracle(oracle_params)
         evaluated_grid = np.array(
