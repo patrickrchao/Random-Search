@@ -17,7 +17,28 @@ class oracle:
         self.function_param = params["FUNCTION_PARAM"]
         self.quadratic_threshold = 5
 
-    # Function Derivative
+    # Empirical Function Derivative
+    def empirical_derivative(self, x, num_queries, nu):
+        function_evals = np.zeros((num_queries, len(x)))
+        total_grad = np.zeros(len(x))
+        for i in range(num_queries):
+            # delta is the random perturbation to x_{j} to calculate approximate gradient
+            delta = np.random.normal(size=len(x))
+            # calculate the queried values x_{j} +/- nu*delta
+            pos_delta_x = x + nu * delta
+            neg_delta_x = x - nu * delta
+
+            function_evals[i, 0] = self.query_function(pos_delta_x.T)
+            function_evals[i, 1] = self.query_function(neg_delta_x.T)
+
+            # accumulate the update and multiply by delta
+            curr_grad = (function_evals[i, 0] - function_evals[i, 1]) * delta
+            total_grad += curr_grad
+
+        return total_grad / (nu * num_queries * 2) , function_evals
+
+        # Function Derivative
+
     def derivative(self, x):
         # Quadratic
         mat = np.diag((self.condition_num, 1))
@@ -29,7 +50,7 @@ class oracle:
             return chain_rule @ inner
         elif self.function == "LOG":
             # Parameter should be on the order of 0.01 to 0.5
-            return 2 * (mat.T @ mat @ x) / (np.linalg.norm(mat @ x)**2 + self.function_param)
+            return 2 * (mat.T @ mat @ x) / (np.linalg.norm(mat @ x) ** 2 + self.function_param)
         return 0
 
     # Function Derivative
@@ -49,12 +70,12 @@ class oracle:
 
         elif self.function == "LOG":
             # Parameter should be on the order of 0.0001 to 0.1
-            return np.log(np.linalg.norm(mat @ x)**2 + self.function_param)
+            return np.log(np.linalg.norm(mat @ x) ** 2 + self.function_param)
 
         return 0
 
     # Return the p-norm of a vector of an arbitrary p
     def norm(vec, p):
-        if np.all(vec==0):
+        if np.all(vec == 0):
             return 0
         return (sum(np.abs(vec) ** p) ** (1. / p)).squeeze()

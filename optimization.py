@@ -8,6 +8,7 @@
  '''
 from optimization_step import optimization_step
 import numpy as np
+import warnings
 
 
 class optimizer:
@@ -15,9 +16,10 @@ class optimizer:
         self.iterations = optimization_params["ITERATIONS"]
         self.nu = optimization_params["NU"]
         self.queries = optimization_params["QUERIES"]
+        self.gradient_type = optimization_params["GRADIENT_TYPE"]
         self.optimizer_type = optimizer_type
 
-        self.step_function = optimization_step(step_params,oracle_params, self.optimizer_type)
+        self.step_function = optimization_step(step_params, oracle_params, self.optimizer_type,self.gradient_type)
 
     def optimize(self, oracle, initialization):
         if self.optimizer_type == "ADAGRAD":
@@ -38,41 +40,29 @@ class optimizer:
         loss = np.zeros(self.iterations)
         dist_from_origin = np.zeros(self.iterations)
 
-        loss[curr_iter] = oracle.query_function(x_values[:, curr_iter])
-        dist_from_origin[curr_iter] = np.linalg.norm(x_values[:, curr_iter])
+        loss[curr_iter] = oracle.query_function(initialization)
+        dist_from_origin[curr_iter] = np.linalg.norm(initialization)
 
         # Iterate over number of iterations
         for curr_iter in range(1, self.iterations):
-            # update represents the change from x_{j} to x_{j+1}
-            update = np.zeros((1, num_dimensions))
-            function_evals = np.zeros((self.queries, num_dimensions))
-            for i in range(self.queries):
-                # delta is the random perturbation to x_{j} to calculate approximate gradient
-                delta = np.random.normal(size=num_dimensions)
-                # calculate the queried values x_{j} +/- nu*delta
-                pos_delta_x = x_values[:, (curr_iter - 1)] + self.nu * delta
-                neg_delta_x = x_values[:, (curr_iter - 1)] - self.nu * delta
+            curr_x = x_values[:, curr_iter - 1]
+            alpha = self.step_function.step_size(curr_x)
+            grad, sigma = self.get_derivative(curr_x, oracle)
 
-                function_evals[i, 0] = oracle.query_function(pos_delta_x)
-                function_evals[i, 1] = oracle.query_function(neg_delta_x)
+            if self.optimizer_type == "NORMALIZE":
+                if self.gradient_type == "TRUE":
+                    grad = grad / np.linalg.norm(grad+1e-8)
+                else:
+                    grad = grad / sigma
 
-                # accumulate the update and multiply by delta
-                curr_update = (function_evals[i, 0] - function_evals[i, 1]) * delta
-                update = update + curr_update
+            next_x = curr_x - alpha * grad
 
-            function_var = np.var(function_evals)
-            curr_sigma = np.sqrt(function_var)
-            if not (self.optimizer_type == "NORMALIZE"):
-                curr_sigma = 1
+            # Add values
 
-            # update current 
-            update = update.T.reshape(num_dimensions, 1)
-            alpha = self.step_function.step_size(x_values[:, curr_iter - 1])
-            x_values[:, curr_iter] = x_values[:, curr_iter - 1] - update.T * alpha / (
-                    self.nu * curr_sigma * self.queries)
+            x_values[:, curr_iter] = next_x
 
-            loss[curr_iter] = oracle.query_function(x_values[:, curr_iter])
-            dist_from_origin[curr_iter] = np.linalg.norm(x_values[:, curr_iter])
+            loss[curr_iter] = oracle.query_function(next_x)
+            dist_from_origin[curr_iter] = np.linalg.norm(next_x)
 
         return loss, dist_from_origin, x_values
 
@@ -92,23 +82,39 @@ class optimizer:
         dist_from_origin[curr_iter] = np.linalg.norm(x_values[:, curr_iter])
 
         cumulative_grad_magnitude = np.zeros(num_dimensions)
+
         # Iterate over number of iterations
         for curr_iter in range(1, self.iterations):
-            function_evals = np.zeros((self.queries, 2))
-            for i in range(self.queries):
-                curr_grad = oracle.derivative(x_values[:, curr_iter - 1])
-                cumulative_grad_magnitude += np.square(curr_grad)
+            curr_x = x_values[:, curr_iter - 1]
+            alpha = self.step_function.step_size(curr_x)
 
-            alpha = self.step_function.step_size(x_values[:, curr_iter - 1])
-            x_values[:, curr_iter] = x_values[:, curr_iter - 1] - alpha / np.sqrt(cumulative_grad_magnitude) * curr_grad
+            # Get the derivative
+            curr_grad, sigma = self.get_derivative(curr_x.T, oracle)
+            cumulative_grad_magnitude += np.square(curr_grad)
 
-            loss[curr_iter] = oracle.query_function(x_values[:, curr_iter])
-            dist_from_origin[curr_iter] = np.linalg.norm(x_values[:, curr_iter])
+            # Update step with cumulative gradient magnitude
+            next_x = curr_x - alpha * curr_grad / np.sqrt(cumulative_grad_magnitude)
 
-        # if plot:
-        #     plot_surface(function,x_values,loss,normalize_variance)
+            # Add values
+            x_values[:, curr_iter] = next_x
+            loss[curr_iter] = oracle.query_function(next_x)
+            dist_from_origin[curr_iter] = np.linalg.norm(next_x)
 
         return loss, dist_from_origin, x_values
+
+    # Get the empirical or true derivative from the previous point
+    # Uses the number of queries and nu as the sampling variance
+    def get_derivative(self, prev_x, oracle):
+        if self.gradient_type == "TRUE":
+            grad = oracle.derivative(prev_x)
+            return grad, None
+        else:
+            empirical_grad, function_evals = oracle.empirical_derivative(prev_x, self.queries, self.nu)
+            #empirical_grad = empirical_grad.reshape(-1, 1)
+            function_var = np.var(function_evals)
+            sigma = np.sqrt(function_var)
+
+            return empirical_grad, sigma
 
     def reset_optimization_step(self):
         self.step_function.reset_iteration()

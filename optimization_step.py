@@ -17,9 +17,9 @@ from oracle import oracle
 class optimization_step:
     optimal_step_dict = pd.read_csv("OptimalInitialStepSizes.csv")
     optimal_step_dict = optimal_step_dict.set_index(['FUNCTION', 'PARAM', 'CONDITION_NUM',
-                                                     'OPTIMIZER_TYPE', 'STEP_FUNCTION_TYPE'])
+                                                     'OPTIMIZER_TYPE','GRADIENT_TYPE','STEP_FUNCTION_TYPE'])
 
-    def __init__(self, step_params, oracle_params, optimizer_type):
+    def __init__(self, step_params, oracle_params, optimizer_type,gradient_type):
 
         self.iteration = 1
         self.optimizer_type = optimizer_type
@@ -33,7 +33,7 @@ class optimization_step:
             self.step_function = "INV_SQ_ROOT"
 
         if step_params["OPTIMAL"] and self.step_function != "LIPSCHITZ":
-            index = function_type, function_param, condition_num, optimizer_type, self.step_function
+            index = function_type, function_param, condition_num, optimizer_type, self.step_function,gradient_type
             try:
                 self.init_step_magnitude = optimization_step.optimal_step_dict.loc[index].values[0]
             except:

@@ -59,8 +59,15 @@ def parse_args():
                         help="Matrix Condition Num", dest="condition_num", type=float)
     parser.add_argument("--function_param", default=CONSTANTS.function_param, action="store",
                         help="Parameter for query function", dest="function_param", type=float)
+    parser.add_argument("--true_gradient", default=False, action="store_true",
+                        help="Use true gradient or empirical", dest="true_gradient")
 
     args = parser.parse_args()
+
+    if args.true_gradient:
+        gradient_type = "TRUE"
+    else:
+        gradient_type = "EMPIRICAL"
 
     main_params = {
         'INITIALIZATIONS': args.num_initializations,
@@ -74,7 +81,8 @@ def parse_args():
     optimization_params = {
         'ITERATIONS': args.iterations,
         'NU': args.nu,
-        'QUERIES': args.queries
+        'QUERIES': args.queries,
+        'GRADIENT_TYPE': gradient_type
     }
 
     step_params = {
@@ -155,6 +163,8 @@ if __name__ == '__main__':
     # Step size parameter search
     if main_params["SEARCH"]:
         step_params["OPTIMAL"] = False
+
+
         optimal_step_sizes = []
 
 
@@ -185,11 +195,11 @@ if __name__ == '__main__':
                 end_step = curr_optimal_step + new_interval_length / 2
 
             optimal_step_sizes.append(curr_optimal_step)
+        for optimizer_type, step_size in zip(optimizer_types,optimal_step_sizes):
+            str = "{},{},{},{},{},{},{:.4f}".format(oracle_params["FUNCTION"],oracle_params["FUNCTION_PARAM"],\
+            oracle_params["CONDITION_NUM"],optimizer_type,optimization_params["GRADIENT_TYPE"],step_params["STEP_FUNCTION"],step_size)
+            print(str)
 
-        print("Function:", oracle_params["FUNCTION"], "Step Function:", step_params["STEP_FUNCTION"])
-        print("Function Parameter:", oracle_params["FUNCTION_PARAM"], "Condition Number:",
-              oracle_params["CONDITION_NUM"])
-        print(optimal_step_sizes)
 
     else:
 

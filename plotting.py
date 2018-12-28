@@ -35,16 +35,18 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
     initialization_magnitude = main_params['INITIALIZATION_MAGNITUDE']
     nu = optimization_params['NU']
     queries = optimization_params['QUERIES']
+    gradient_type = string_format(optimization_params['GRADIENT_TYPE'])
     function_param = oracle_params['FUNCTION_PARAM']
     condition_num = oracle_params['CONDITION_NUM']
     initial_step_magnitude = step_params['INITIAL_STEP_MAGNITUDE']
-
 
     # Begin file name
     file_name = "{} Function ".format(function)
     plot_title = "{} Function ".format(function)
     file_path = "./"
-    max_x = 0
+
+
+
     # If creating surface plot or contour
     if plot_type == "Surface" or plot_type == "Contour":
         function_oracle = oracle(oracle_params)
@@ -143,18 +145,18 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
         plt.legend(optimizer_types, loc='upper right', prop={'size': 6})
 
     # Add rest of file name
-    file_name += "{} Step Sizes dims {} iters {} mag {} nu {} queries {} param {} cond num {}". \
-        format(step_size, num_dimensions, iterations, initialization_magnitude,
+    file_name += "{} Step Sizes {} Gradients dims {} iters {} mag {} nu {} queries {} param {} cond num {}". \
+        format(step_size, gradient_type, num_dimensions, iterations, initialization_magnitude,
                nu, queries, function_param, condition_num)
     # Update file path and plot title
     if step_params["OPTIMAL"]:
-        plot_title += 'Convergence \n {} Optimal Step Sizes Param {}'. \
-            format(step_size, function_param)
+        plot_title += 'Convergence with {} Gradients \n {} Optimal Step Sizes Param {}'. \
+            format(gradient_type, step_size, function_param)
         file_path += "Optimal/"
     else:
         file_name += " step mag {}".format(initial_step_magnitude)
-        plot_title += 'Convergence \n {} Step Sizes Param {} Init Step Mag {}'. \
-            format(step_size, function_param, initial_step_magnitude)
+        plot_title += 'Convergence with {} Gradients \n {} Step Sizes Param {} Init Step Mag {}'. \
+            format(gradient_type, step_size,  function_param, initial_step_magnitude)
     file_path += plot_type.replace(" ", "_") + "_Plots/"
 
     plt.title(plot_title)

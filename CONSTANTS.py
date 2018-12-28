@@ -21,6 +21,6 @@ function_param = 0.0001
 start_step = 0.0001
 end_step = 10
 
-depth = 15
+depth = 12
 sweep = 5
 interval_shrinkage = 0.7
