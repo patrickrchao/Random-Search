@@ -7,33 +7,36 @@
 
  '''
 
-
 import numpy as np
 import pandas as pd
 import warnings
 from oracle import oracle
 
+
 # Handle all the step size function logic for optimization
 class optimization_step:
     optimal_step_dict = pd.read_csv("OptimalInitialStepSizes.csv")
     optimal_step_dict = optimal_step_dict.set_index(['FUNCTION', 'PARAM', 'CONDITION_NUM',
-                                                     'OPTIMIZER_TYPE','GRADIENT_TYPE','STEP_FUNCTION_TYPE'])
+                                                     'OPTIMIZER_TYPE', 'GRADIENT_TYPE', 'STEP_FUNCTION_TYPE'])
 
-    def __init__(self, step_params, oracle_params, optimizer_type,gradient_type):
+    def __init__(self, step_params, oracle_params, optimizer_type, gradient_type):
 
         self.iteration = 1
         self.optimizer_type = optimizer_type
         self.step_function = step_params["STEP_FUNCTION"]
+        self.gradient_type = gradient_type
 
         function_type = oracle_params["FUNCTION"]
         condition_num = oracle_params["CONDITION_NUM"]
         function_param = oracle_params["FUNCTION_PARAM"]
         self.oracle_params = oracle_params
-        if self.step_function == "LIPSCHITZ" and self.optimizer_type != "NONNORMALIZE":
-            self.step_function = "INV_SQ_ROOT"
-
+        # if self.step_function == "LIPSCHITZ" and self.optimizer_type != "NONNORMALIZE":
+        #     self.step_function = "INV_SQ_ROOT"
+        if self.optimizer_type == "ADAGRAD":
+            self.step_function = "CONSTANT"
         if step_params["OPTIMAL"] and self.step_function != "LIPSCHITZ":
-            index = function_type, function_param, condition_num, optimizer_type, self.step_function,gradient_type
+            # Look up in the optimal initial step size csv
+            index = function_type, function_param, condition_num, optimizer_type, self.step_function, gradient_type
             try:
                 self.init_step_magnitude = optimization_step.optimal_step_dict.loc[index].values[0]
             except:
@@ -48,7 +51,7 @@ class optimization_step:
         self.iteration = 1
 
     # Return the step size given the step function type
-    def step_size(self,x):
+    def step_size(self, x):
         step_size_map = {
             "INV_SQ_ROOT": self.inv_sq_root_step,
             "LOG": self.log_step,
@@ -57,6 +60,7 @@ class optimization_step:
             "LIPSCHITZ": self.lipschitz_step
         }
         if self.step_function == "LIPSCHITZ":
+            self.oracle = oracle(self.oracle_params)
             step = step_size_map[self.step_function](x)
         else:
             step = step_size_map[self.step_function]()
@@ -89,9 +93,6 @@ class optimization_step:
         return self.init_step_magnitude
 
     #
-    def lipschitz_step(self,x):
-        function_oracle = oracle(self.oracle_params)
-        step_size = 1/function_oracle.lipschitz(x)
+    def lipschitz_step(self, x):
+        step_size = 1 / (self.oracle.lipschitz(x, self.gradient_type) + 1e-8)
         return step_size
-
-

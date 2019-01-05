@@ -47,6 +47,7 @@ class optimizer:
         for curr_iter in range(1, self.iterations):
             curr_x = x_values[:, curr_iter - 1]
             alpha = self.step_function.step_size(curr_x)
+
             grad, sigma = self.get_derivative(curr_x, oracle)
 
             if self.optimizer_type == "NORMALIZE":
@@ -58,7 +59,6 @@ class optimizer:
             next_x = curr_x - alpha * grad
 
             # Add values
-
             x_values[:, curr_iter] = next_x
 
             loss[curr_iter] = oracle.query_function(next_x)
@@ -87,13 +87,12 @@ class optimizer:
         for curr_iter in range(1, self.iterations):
             curr_x = x_values[:, curr_iter - 1]
             alpha = self.step_function.step_size(curr_x)
-
             # Get the derivative
             curr_grad, sigma = self.get_derivative(curr_x.T, oracle)
             cumulative_grad_magnitude += np.square(curr_grad)
 
             # Update step with cumulative gradient magnitude
-            next_x = curr_x - alpha * curr_grad / np.sqrt(cumulative_grad_magnitude)
+            next_x = curr_x - alpha * curr_grad / np.sqrt(cumulative_grad_magnitude+1e-8)
 
             # Add values
             x_values[:, curr_iter] = next_x
@@ -109,8 +108,7 @@ class optimizer:
             grad = oracle.derivative(prev_x)
             return grad, None
         else:
-            empirical_grad, function_evals = oracle.empirical_derivative(prev_x, self.queries, self.nu)
-            #empirical_grad = empirical_grad.reshape(-1, 1)
+            empirical_grad, function_evals = oracle.empirical_derivative(prev_x, self.queries, self.nu, output_function_evals=True)
             function_var = np.var(function_evals)
             sigma = np.sqrt(function_var)
 

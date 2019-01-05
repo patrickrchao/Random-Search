@@ -137,10 +137,17 @@ def generate_plots(params, values, plot_type="Loss", optimizer_types=None):
 
         plt.xlabel('Iterations')
         plt.ylabel(plot_type)
-
+        plt.ylim(top=average_values[0,0]*1.1)
         if plot_type == "Distance from Origin":
             plt.ylim(bottom=0)
-            plt.ylim(top=12)
+        else:
+            min_value = np.min(average_values)
+            if min_value < 0:
+                min_plot = min_value * 1.1
+            else:
+                min_plot = min_value * 0.9
+            plt.ylim(bottom=min_plot)
+
 
         plt.legend(optimizer_types, loc='upper right', prop={'size': 6})
 

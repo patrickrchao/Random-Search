@@ -96,6 +96,8 @@ def parse_args():
         'CONDITION_NUM': args.condition_num,
         'FUNCTION_PARAM': args.function_param
     }
+    if step_params['STEP_FUNCTION'] == "LIPSCHITZ":
+        oracle_params.update({'NU': args.nu, 'QUERIES': args.queries})
 
     return main_params, optimization_params, step_params, oracle_params
 
@@ -163,10 +165,7 @@ if __name__ == '__main__':
     # Step size parameter search
     if main_params["SEARCH"]:
         step_params["OPTIMAL"] = False
-
-
         optimal_step_sizes = []
-
 
         # Iterate over optimizer types
         for optimizer_type in optimizer_types:
@@ -190,7 +189,6 @@ if __name__ == '__main__':
                     average_losses.append(average_loss)
 
                 curr_optimal_step = np.linspace(start_step, end_step, num=sweep)[np.argmin(average_losses)]
-                # print(optimizer_type,curr_depth,curr_optimal_step)
                 start_step = max(curr_optimal_step - new_interval_length / 2, 0.0001)
                 end_step = curr_optimal_step + new_interval_length / 2
 
